@@ -3,7 +3,7 @@ from window import Game
 
 def main():
     # start game!
-    window = Game(20,20,50)
+    window = Game(40,40,20)
     window.run()
 
 

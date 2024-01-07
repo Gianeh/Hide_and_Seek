@@ -16,7 +16,6 @@ class Game:
 
         # init game variables
         self.map = self.init_map()
-        self.movable_walls = self.init_movable_walls()
         self.players = self.init_players()
 
         # define a clock to control the fps
@@ -28,28 +27,19 @@ class Game:
             for col in range(self.cols):
                 x = col * self.size
                 y = row * self.size
-                if col == self.cols//2:
-                    cells.append(Wall(x,y,self.size))
+                if col == self.cols // 2:
+                    cells.append(Wall(x, y, self.size))
+                # elif col == self.cols // 3 and row == self.rows // 3:
+                elif col % 3 == 0 and row % 5 == 0:
+                    cells.append(MovableWall(x, y, self.size))
                 else:
-                    cells.append(Floor(x,y,self.size))
+                    cells.append(Floor(x, y, self.size))
         return cells
 
-    def init_movable_walls(self):
-        movable_walls = []
-        for row in range(self.rows):
-            for col in range(self.cols):
-                x = col * self.size
-                y = row * self.size
-                if col == self.cols // 3 and row == self.rows // 3:
-                    movable_walls.append(MovableWall(x,y,self.size))
-                else:
-                    movable_walls.append(Floor(x,y,self.size))
-        return movable_walls
-    
     def init_players(self):
         players = []
-        players.append(Hider(0, 0, self.size))
-        players.append(Seeker(self.width - self.size, self.height - self.size, self.size))
+        players.append(Hider(0, 0, self.size, map=self.map, cols=self.cols))
+        players.append(Seeker(self.width - self.size, self.height - self.size, self.size, map=self.map, cols=self.cols))
         return players
 
     def run(self):
@@ -68,18 +58,13 @@ class Game:
     def update(self):
         self.draw_map()
         self.control_players()
+        self.draw_map()
         self.draw_players()
-        self.draw_movable_walls()
 
     def draw_map(self):
         # blit all the map to the screen with a certain border width
         for cell in self.map:
             pg.draw.rect(self.screen, cell.color, (cell.x, cell.y, cell.size, cell.size), 25)
-
-    def draw_movable_walls(self):
-        for cell in self.movable_walls:
-            if cell.obj_type == "movable_wall":
-                pg.draw.rect(self.screen, cell.color, (cell.x, cell.y, cell.size, cell.size), 0)
 
     def draw_players(self):
         for player in self.players:
@@ -111,68 +96,118 @@ class Game:
             self.players[1].keyboard_move('r')
 
         # control player 0 movable wall
-        if keys[pg.K_RCTRL]:
+        if keys[pg.K_LCTRL]:
             if not self.check_movable_wall(self.players[0]):
                 self.players[0].movable_wall = None
+                self.players[0].movable_wall_side = None
 
         # control player 1 movable wall
-        if keys[pg.K_LCTRL]:
+        if keys[pg.K_RCTRL]:
             if not self.check_movable_wall(self.players[1]):
                 self.players[1].movable_wall = None
-    
+                self.players[1].movable_wall_side = None
+
     def check_available_positions(self):
         positions = []
         for p in self.players:
-            av = [False,False,False,False]
+            av = [False, False, False, False]
             # av : 0 - sx , 1 - dx , 2 - u , 3 - d
 
             i = p.x // self.size
             j = p.y // self.size
 
             idx = i + j * self.cols
-
-            if p.x > 0 and self.map[idx-1].obj_type != "wall":
+            if p.movable_wall_side == 'l' and p.x > self.size and self.map[idx - 2].obj_type != "wall" and self.map[
+                idx - 2].obj_type != "movable_wall":
                 av[0] = True
-            
-            if p.x < self.width - self.size and self.map[idx+1].obj_type != "wall":
+            elif p.movable_wall_side != 'l' and p.x > 0 and self.map[idx - 1].obj_type != "wall" and self.map[
+                idx - 1].obj_type != "movable_wall":
+                av[0] = True
+
+            if av[0] == True and p.movable_wall_side == 'u' and self.map[
+                idx - self.cols - 1].obj_type == "movable_wall":
+                av[0] = False
+
+            if av[0] == True and p.movable_wall_side == 'd' and self.map[
+                idx + self.cols - 1].obj_type == "movable_wall":
+                av[0] = False
+
+            if p.movable_wall_side == 'r' and p.x < self.width - 2 * self.size and self.map[
+                idx + 2].obj_type != "wall" and self.map[idx + 2].obj_type != "movable_wall":
+                av[1] = True
+            elif p.movable_wall_side != 'r' and p.x < self.width - self.size and self.map[
+                idx + 1].obj_type != "wall" and self.map[idx + 1].obj_type != "movable_wall":
                 av[1] = True
 
-            if p.y > 0 and self.map[idx - self.cols].obj_type != "wall":
+            if av[1] == True and p.movable_wall_side == 'u' and self.map[
+                idx - self.cols + 1].obj_type == "movable_wall":
+                av[1] = False
+
+            if av[1] == True and p.movable_wall_side == 'd' and self.map[
+                idx + self.cols + 1].obj_type == "movable_wall":
+                av[1] = False
+
+            if p.movable_wall_side == 'u' and p.y > self.size and self.map[idx - 2 * self.cols].obj_type != "wall" and \
+                    self.map[idx - 2 * self.cols].obj_type != "movable_wall":
                 av[2] = True
-            
-            if p.y < self.height - self.size and self.map[idx + self.cols].obj_type != "wall":
+            elif p.movable_wall_side != 'u' and p.y > 0 and self.map[idx - self.cols].obj_type != "wall" and self.map[
+                idx - self.cols].obj_type != "movable_wall":
+                av[2] = True
+
+            if av[2] == True and p.movable_wall_side == 'l' and self.map[
+                idx - self.cols - 1].obj_type == "movable_wall":
+                av[2] = False
+
+            if av[2] == True and p.movable_wall_side == 'r' and self.map[
+                idx - self.cols + 1].obj_type == "movable_wall":
+                av[2] = False
+
+            if p.movable_wall_side == 'd' and p.y < self.height - 2 * self.size and self.map[
+                idx + 2 * self.cols].obj_type != "wall" and self.map[idx + 2 * self.cols].obj_type != "movable_wall":
                 av[3] = True
+            elif p.movable_wall_side != 'd' and p.y < self.height - self.size and self.map[
+                idx + self.cols].obj_type != "wall" and self.map[idx + self.cols].obj_type != "movable_wall":
+                av[3] = True
+
+            if av[3] == True and p.movable_wall_side == 'l' and self.map[
+                idx + self.cols - 1].obj_type == "movable_wall":
+                av[3] = False
+
+            if av[3] == True and p.movable_wall_side == 'r' and self.map[
+                idx - self.cols + 1].obj_type == "movable_wall":
+                av[3] = False
 
             positions.append(av)
         return positions
-    
+
     def check_movable_wall(self, player):
         i = player.x // self.size
         j = player.y // self.size
 
         idx = i + j * self.cols
 
+        side = None
+
         if player.view == "u":
             idx -= self.cols
+            side = 'u'
         elif player.view == "d":
             idx += self.cols
+            side = 'd'
         elif player.view == "l":
             idx -= 1
+            side = 'l'
         elif player.view == "r":
             idx += 1
+            side = 'r'
 
-        if self.movable_walls[idx].obj_type == "movable_wall":
-            player.movable_wall = self.movable_walls[idx] if player.movable_wall is None else None
+        if self.map[idx].obj_type == "movable_wall":
+            if player.movable_wall is None:
+                player.movable_wall = self.map[idx]
+                player.movable_wall_side = side
+            else:
+                player.movable_wall = None
+                player.movable_wall_side = None
             return True
         else:
             return False
-    
-'''
-    0 0 0 0 0 0 0 0 0 0 0
-    0 0 0 0 0 0 0 0 0 0 0
-    0 0 0 0 0 0 0 9 0 0 0
-    0 0 0 0 0 1 0 2 0 0 0
-    0 0 0 0 0 0 9 9 0 0 0
-    0 0 0 0 0 0 0 0 0 0 0
-    0 0 0 0 0 0 0 0 0 0 0
-'''
