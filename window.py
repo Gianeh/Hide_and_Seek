@@ -27,10 +27,10 @@ class Game:
             for col in range(self.cols):
                 x = col * self.size
                 y = row * self.size
-                if col == self.cols // 2:
-                    cells.append(Wall(x, y, self.size))
+                #if col == self.cols // 2:
+                #    cells.append(Wall(x, y, self.size))
                 # elif col == self.cols // 3 and row == self.rows // 3:
-                elif col % 3 == 0 and row % 5 == 0:
+                if col % 3 == 0 and row % 5 == 0:
                     cells.append(MovableWall(x, y, self.size))
                 else:
                     cells.append(Floor(x, y, self.size))
@@ -184,16 +184,16 @@ class Game:
 
         side = None
 
-        if player.view == "u":
+        if player.direction == "u":
             idx -= self.cols
             side = 'u'
-        elif player.view == "d":
+        elif player.direction == "d":
             idx += self.cols
             side = 'd'
-        elif player.view == "l":
+        elif player.direction == "l":
             idx -= 1
             side = 'l'
-        elif player.view == "r":
+        elif player.direction == "r":
             idx += 1
             side = 'r'
 
