@@ -54,10 +54,13 @@ class Game:
 
             # flip the display buffer
             pg.display.flip()
+            print(self.map[0].obj_type)
 
     def update(self):
-        self.draw_map()
+        #self.check_map_integrity()
+        #self.draw_map()
         self.control_players()
+        self.check_map_integrity()
         self.draw_map()
         self.draw_players()
 
@@ -101,6 +104,10 @@ class Game:
                 self.players[0].movable_wall = None
                 self.players[0].movable_wall_side = None
 
+        # log player 0 movable wall position
+        if self.players[0].movable_wall is not None:
+            print(self.players[0].movable_wall.x // self.size, self.players[0].movable_wall.y // self.size)
+
         # control player 1 movable wall
         if keys[pg.K_RCTRL]:
             if not self.check_movable_wall(self.players[1]):
@@ -109,6 +116,7 @@ class Game:
 
     def check_available_positions(self):
         positions = []
+        block = "movable_wall wall"
         for p in self.players:
             av = [False, False, False, False]
             # av : 0 - sx , 1 - dx , 2 - u , 3 - d
@@ -117,64 +125,60 @@ class Game:
             j = p.y // self.size
 
             idx = i + j * self.cols
-            if p.movable_wall_side == 'l' and p.x > self.size and self.map[idx - 2].obj_type != "wall" and self.map[
-                idx - 2].obj_type != "movable_wall":
+            if p.movable_wall_side == 'l' and p.x > self.size and self.map[idx - 2].obj_type not in block:
                 av[0] = True
-            elif p.movable_wall_side != 'l' and p.x > 0 and self.map[idx - 1].obj_type != "wall" and self.map[
-                idx - 1].obj_type != "movable_wall":
+            elif p.movable_wall_side != 'l' and p.x > 0 and self.map[idx - 1].obj_type not in block:
                 av[0] = True
 
             if av[0] == True and p.movable_wall_side == 'u' and self.map[
-                idx - self.cols - 1].obj_type == "movable_wall":
+                idx - self.cols - 1].obj_type in block:
                 av[0] = False
 
             if av[0] == True and p.movable_wall_side == 'd' and self.map[
-                idx + self.cols - 1].obj_type == "movable_wall":
+                idx + self.cols - 1].obj_type in block:
                 av[0] = False
 
             if p.movable_wall_side == 'r' and p.x < self.width - 2 * self.size and self.map[
-                idx + 2].obj_type != "wall" and self.map[idx + 2].obj_type != "movable_wall":
+                idx + 2].obj_type not in block:
                 av[1] = True
             elif p.movable_wall_side != 'r' and p.x < self.width - self.size and self.map[
-                idx + 1].obj_type != "wall" and self.map[idx + 1].obj_type != "movable_wall":
+                idx + 1].obj_type not in block:
                 av[1] = True
 
             if av[1] == True and p.movable_wall_side == 'u' and self.map[
-                idx - self.cols + 1].obj_type == "movable_wall":
+                idx - self.cols + 1].obj_type in block:
                 av[1] = False
 
             if av[1] == True and p.movable_wall_side == 'd' and self.map[
-                idx + self.cols + 1].obj_type == "movable_wall":
+                idx + self.cols + 1].obj_type in block:
                 av[1] = False
 
-            if p.movable_wall_side == 'u' and p.y > self.size and self.map[idx - 2 * self.cols].obj_type != "wall" and \
-                    self.map[idx - 2 * self.cols].obj_type != "movable_wall":
+            if p.movable_wall_side == 'u' and p.y > self.size and self.map[idx - 2 * self.cols].obj_type not in block:
                 av[2] = True
-            elif p.movable_wall_side != 'u' and p.y > 0 and self.map[idx - self.cols].obj_type != "wall" and self.map[
-                idx - self.cols].obj_type != "movable_wall":
+            elif p.movable_wall_side != 'u' and p.y > 0 and self.map[idx - self.cols].obj_type not in block:
                 av[2] = True
 
             if av[2] == True and p.movable_wall_side == 'l' and self.map[
-                idx - self.cols - 1].obj_type == "movable_wall":
+                idx - self.cols - 1].obj_type in block:
                 av[2] = False
 
             if av[2] == True and p.movable_wall_side == 'r' and self.map[
-                idx - self.cols + 1].obj_type == "movable_wall":
+                idx - self.cols + 1].obj_type in block:
                 av[2] = False
 
             if p.movable_wall_side == 'd' and p.y < self.height - 2 * self.size and self.map[
-                idx + 2 * self.cols].obj_type != "wall" and self.map[idx + 2 * self.cols].obj_type != "movable_wall":
+                idx + 2 * self.cols].obj_type not in block:
                 av[3] = True
             elif p.movable_wall_side != 'd' and p.y < self.height - self.size and self.map[
-                idx + self.cols].obj_type != "wall" and self.map[idx + self.cols].obj_type != "movable_wall":
+                idx + self.cols].obj_type not in block:
                 av[3] = True
 
             if av[3] == True and p.movable_wall_side == 'l' and self.map[
-                idx + self.cols - 1].obj_type == "movable_wall":
+                idx + self.cols - 1].obj_type in block:
                 av[3] = False
 
             if av[3] == True and p.movable_wall_side == 'r' and self.map[
-                idx - self.cols + 1].obj_type == "movable_wall":
+                idx - self.cols + 1].obj_type in block:
                 av[3] = False
 
             positions.append(av)
@@ -211,3 +215,18 @@ class Game:
             return True
         else:
             return False
+        
+    def check_map_integrity(self):
+        for p in self.players:
+            if p.movable_wall is not None:
+                px, py = p.movable_wall.prev_x, p.movable_wall.prev_y
+                pi = px // self.size
+                pj = py // self.size
+                pidx = pi + pj * self.cols
+                x, y = p.movable_wall.x, p.movable_wall.y
+                i = x // self.size
+                j = y // self.size
+                idx = i + j * self.cols
+                if pidx != idx:
+                    self.map[idx] = p.movable_wall
+                    self.map[pidx] = Floor(px, py, self.size)

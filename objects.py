@@ -27,36 +27,42 @@ class Wall(Cell):
 class MovableWall(Cell):
     def __init__(self, x, y, size, color=GREEN, obj_type='movable_wall'):
         super().__init__(x, y, size, color, obj_type)
+        self.prev_x = x
+        self.prev_y = y
 
     def move(self, direction, map, cols):
-        i = self.x // self.size
-        j = self.y // self.size
+        #i = self.x // self.size
+        #j = self.y // self.size
 
-        idx = i + j * cols
+        #idx = i + j * cols
 
         if direction == 'u':
-            temp = map[idx - cols]
-            map[idx - cols] = map[idx]
-            map[idx] = temp
-            map[idx].y = self.y
+            self.prev_y = self.y
+            #temp = map[idx - cols]
+            #map[idx - cols] = map[idx]
+            #map[idx] = temp
+            #map[idx].y = self.y
             self.y -= self.size
         elif direction == 'd':
-            temp = map[idx + cols]
-            map[idx + cols] = map[idx]
-            map[idx] = temp
-            map[idx].y = self.y
+            self.prev_y = self.y
+            #temp = map[idx + cols]
+            #map[idx + cols] = map[idx]
+            #map[idx] = temp
+            #map[idx].y = self.y
             self.y += self.size
         elif direction == 'l':
-            temp = map[idx - 1]
-            map[idx - 1] = map[idx]
-            map[idx] = temp
-            map[idx].x = self.x
+            self.prev_x = self.x
+            #temp = map[idx - 1]
+            #map[idx - 1] = map[idx]
+            #map[idx] = temp
+            #map[idx].x = self.x
             self.x -= self.size
         elif direction == 'r':
-            temp = map[idx + 1]
-            map[idx + 1] = map[idx]
-            map[idx] = temp
-            map[idx].x = self.x
+            self.prev_x = self.x
+            #temp = map[idx + 1]
+            #map[idx + 1] = map[idx]
+            #map[idx] = temp
+            #map[idx].x = self.x
             self.x += self.size
 
 
@@ -66,6 +72,7 @@ class Player(Cell):
         self.view = None
         self.movable_wall = None
         self.movable_wall_side = None
+
         self.map = map
         self.cols = cols
 
