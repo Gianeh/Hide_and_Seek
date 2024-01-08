@@ -38,8 +38,8 @@ class Game:
 
     def init_players(self):
         players = []
-        players.append(Hider(0, 0, self.size, map=self.map, cols=self.cols))
-        players.append(Seeker(self.width - self.size, self.height - self.size, self.size, map=self.map, cols=self.cols))
+        players.append(Hider(0, 0, self.size))
+        players.append(Seeker(self.width - self.size, self.height - self.size, self.size))
         return players
 
     def run(self):
@@ -54,11 +54,10 @@ class Game:
 
             # flip the display buffer
             pg.display.flip()
-            print(self.map[0].obj_type)
+            self.get_cell()
+
 
     def update(self):
-        #self.check_map_integrity()
-        #self.draw_map()
         self.control_players()
         self.check_map_integrity()
         self.draw_map()
@@ -87,6 +86,10 @@ class Game:
             self.players[0].keyboard_move('l')
         elif keys[pg.K_d] and available_positions[0][1]:
             self.players[0].keyboard_move('r')
+        elif keys[pg.K_LCTRL]:
+            if not self.check_movable_wall(self.players[0]):
+                self.players[0].movable_wall = None
+                self.players[0].movable_wall_side = None
 
         # control player 1 movement
         if keys[pg.K_UP] and available_positions[1][2]:
@@ -97,19 +100,7 @@ class Game:
             self.players[1].keyboard_move('l')
         elif keys[pg.K_RIGHT] and available_positions[1][1]:
             self.players[1].keyboard_move('r')
-
-        # control player 0 movable wall
-        if keys[pg.K_LCTRL]:
-            if not self.check_movable_wall(self.players[0]):
-                self.players[0].movable_wall = None
-                self.players[0].movable_wall_side = None
-
-        # log player 0 movable wall position
-        if self.players[0].movable_wall is not None:
-            print(self.players[0].movable_wall.x // self.size, self.players[0].movable_wall.y // self.size)
-
-        # control player 1 movable wall
-        if keys[pg.K_RCTRL]:
+        elif keys[pg.K_RCTRL]:
             if not self.check_movable_wall(self.players[1]):
                 self.players[1].movable_wall = None
                 self.players[1].movable_wall_side = None
@@ -178,7 +169,8 @@ class Game:
                 av[3] = False
 
             if av[3] == True and p.movable_wall_side == 'r' and self.map[
-                idx - self.cols + 1].obj_type in block:
+                idx + self.cols + 1].obj_type in block:
+                print("dio cane!")
                 av[3] = False
 
             positions.append(av)
@@ -230,3 +222,13 @@ class Game:
                 if pidx != idx:
                     self.map[idx] = p.movable_wall
                     self.map[pidx] = Floor(px, py, self.size)
+                    p.movable_wall.prev_x = x
+                    p.movable_wall.prev_y = y
+    
+    # a function that logs the obj_type of pointed cell
+    def get_cell(self):
+        pos = pg.mouse.get_pos()
+        i = pos[0] // self.size
+        j = pos[1] // self.size
+        idx = i + j * self.cols
+        print(self.map[idx].obj_type)
