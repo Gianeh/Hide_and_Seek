@@ -25,8 +25,12 @@ class Game:
         self.clock = pg.time.Clock()
 
         self.player_img = pg.image.load('img3.png')             #<------------
+        # crop to size
+        self.player_img = pg.transform.scale(self.player_img, (self.size, self.size))
         self.player_img.set_colorkey(WHITE)                     #<------------
         self.wall_img = pg.image.load('wall.png')               #<------------
+        # crop to size
+        self.wall_img = pg.transform.scale(self.wall_img, (self.size, self.size))
 
     def init_map(self):
         cells = []
@@ -45,8 +49,8 @@ class Game:
 
     def init_players(self):
         players = []
-        players.append(Hider(0, 0, self.size))
-        players.append(Seeker(self.width - self.size, self.height - self.size, self.size))
+        players.append(Hider(0, 0, self.size, map=self.map, cols=self.cols))
+        players.append(Seeker(self.width - self.size, self.height - self.size, self.size, map=self.map, cols=self.cols))
         return players
 
     def run(self):
@@ -62,9 +66,9 @@ class Game:
             self.update()
 
             # flip the display buffer
-            #pg.display.flip()
-            #self.get_cell()
-            pg.display.update()                                     #<-------------
+            pg.display.flip()
+            self.get_cell()
+            #pg.display.update()                                     #<-------------
             self.clock.tick(15)                                     #<-------------
 
 
@@ -72,7 +76,7 @@ class Game:
 
     def update(self):
         #self.control_players()
-        self.check_map_integrity()
+        #self.check_map_integrity()
         self.draw_map()
         self.draw_players()
 
@@ -122,7 +126,7 @@ class Game:
                 self.players[0].movable_wall_side = None
 
         # control player 1 movement
-        if keys[pg.K_UP] and available_positions[1][2]:
+        elif keys[pg.K_UP] and available_positions[1][2]:
             self.players[1].keyboard_move('u')
         elif keys[pg.K_UP]:
             self.players[1].change_direction('u')
@@ -212,7 +216,6 @@ class Game:
 
             if av[3] == True and p.movable_wall_side == 'r' and self.map[
                 idx + self.cols + 1].obj_type in block:
-                print("dio cane!")
                 av[3] = False
 
             positions.append(av)
@@ -249,7 +252,7 @@ class Game:
             return True
         else:
             return False
-        
+    '''   
     def check_map_integrity(self):
         for p in self.players:
             if p.movable_wall is not None:
@@ -273,7 +276,7 @@ class Game:
                     #con lue ultime due linee di codice che aggiornano prev_x e y si garantisce che il corpo dell "if pidx != idx:"
                     #venga eseguito solo se la funzione move ha prima modificato p.movablee_wall.x e y === ordinamento della mappa solo se
                     #è avvenuto un effettivo spostamento del movable_wall nel frame corrente
-    
+    '''
     # a function that logs the obj_type of pointed cell
     def get_cell(self):
         pos = pg.mouse.get_pos()

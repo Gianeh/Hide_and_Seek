@@ -27,50 +27,66 @@ class Wall(Cell):
 class MovableWall(Cell):
     def __init__(self, x, y, size, color=GREEN, obj_type='movable_wall'):
         super().__init__(x, y, size, color, obj_type)
-        self.prev_x = x
-        self.prev_y = y
 
-    def move(self, direction):
+    def move(self, direction, map, cols):
+        i = self.x // self.size
+        j = self.y // self.size
+        idx = i + j * cols
 
         if direction == 'u':
-            self.prev_y = self.y
+            temp = map[idx - cols]
+            map[idx - cols] = map[idx]
+            map[idx] = temp
+            map[idx].y = self.y
             self.y -= self.size
         elif direction == 'd':
-            self.prev_y = self.y
+            temp = map[idx + cols]
+            map[idx + cols] = map[idx]
+            map[idx] = temp
+            map[idx].y = self.y
             self.y += self.size
         elif direction == 'l':
-            self.prev_x = self.x
+            temp = map[idx - 1]
+            map[idx - 1] = map[idx]
+            map[idx] = temp
+            map[idx].x = self.x
             self.x -= self.size
         elif direction == 'r':
-            self.prev_x = self.x
+            temp = map[idx + 1]
+            map[idx + 1] = map[idx]
+            map[idx] = temp
+            map[idx].x = self.x
             self.x += self.size
 
 
+
 class Player(Cell):
-    def __init__(self, x, y, size, color=WHITE, obj_type='player'):
+    def __init__(self, x, y, size, color=WHITE, obj_type='player', map=None, cols=None):
         super().__init__(x, y, size, color, obj_type)
         self.direction = None
         self.movable_wall = None
         self.movable_wall_side = None
+        self.map = map
+        self.cols = cols
         #self.view = [[None * 4], [None * 4], [None * 4]]
 
     def keyboard_move(self, direction):
         if direction == 'u':
             self.y -= self.size
             self.direction = 'u'
-            if self.movable_wall is not None: self.movable_wall.move('u')
+            if self.movable_wall is not None: self.movable_wall.move('u', self.map, self.cols)
         elif direction == 'd':
             self.y += self.size
             self.direction = 'd'
-            if self.movable_wall is not None: self.movable_wall.move('d')
+            if self.movable_wall is not None: self.movable_wall.move('d', self.map, self.cols)
         elif direction == 'l':
             self.x -= self.size
             self.direction = 'l'
-            if self.movable_wall is not None: self.movable_wall.move('l')
+            if self.movable_wall is not None: self.movable_wall.move('l', self.map, self.cols)
         elif direction == 'r':
             self.x += self.size
             self.direction = 'r'
-            if self.movable_wall is not None: self.movable_wall.move('r')
+            if self.movable_wall is not None: self.movable_wall.move('r', self.map, self.cols)
 
     def change_direction(self, direction):
         if direction == 'u':
@@ -84,13 +100,13 @@ class Player(Cell):
 
 
 class Hider(Player):
-    def __init__(self, x, y, size, color=BLUE, obj_type='hider'):
-        super().__init__(x, y, size, color, obj_type)
+    def __init__(self, x, y, size, color=BLUE, obj_type='hider', map=None, cols=None):
+        super().__init__(x, y, size, color, obj_type, map, cols)
 
 
 class Seeker(Player):
-    def __init__(self, x, y, size, color=RED, obj_type='seeker'):
-        super().__init__(x, y, size, color, obj_type)
+    def __init__(self, x, y, size, color=RED, obj_type='seeker', map=None, cols=None):
+        super().__init__(x, y, size, color, obj_type, map, cols)
 
 
 
