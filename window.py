@@ -3,6 +3,7 @@ from objects import Cell, Floor, Wall, MovableWall, Hider, Seeker
 import sys                                                      #<-------
 
 WHITE = (255, 255, 255)
+BLACK = (0, 0, 0)
 
 
 class Game:
@@ -16,6 +17,9 @@ class Game:
         pg.display.set_caption('HIDE AND SEEK GAME')            #<--------
         self.screen = pg.display.set_mode((self.width, self.height))
         self.screen.fill(WHITE)
+
+        # view screeeeeeeeen
+        # self.view_screen = pg.display.set_mode((self.width, self.height))
 
         # init game variables
         self.map = self.init_map()
@@ -49,8 +53,8 @@ class Game:
 
     def init_players(self):
         players = []
-        players.append(Hider(0, 0, self.size, map=self.map, cols=self.cols))
-        players.append(Seeker(self.width - self.size, self.height - self.size, self.size, map=self.map, cols=self.cols))
+        players.append(Hider(300, 300, self.size, map=self.map, cols=self.cols))
+        players.append(Seeker(self.width - self.size - 300, self.height - self.size - 300, self.size, map=self.map, cols=self.cols))
         return players
 
     def run(self):
@@ -65,14 +69,14 @@ class Game:
             self.screen.fill(WHITE)
             self.update()
 
+            # self.view_screen.fill(WHITE)
+            self.draw_players_view()
+
             # flip the display buffer
             pg.display.flip()
             self.get_cell()
             #pg.display.update()                                     #<-------------
             self.clock.tick(15)                                     #<-------------
-
-
-
 
     def update(self):
         #self.control_players()
@@ -87,6 +91,23 @@ class Game:
                 self.screen.blit(self.wall_img, (cell.x, cell.y))                                           #<-----------
             else:
                 pg.draw.rect(self.screen, cell.color, (cell.x, cell.y, cell.size, cell.size), 25)
+
+
+    def draw_players_view(self):
+        for p in self.players:
+            p.look()
+            for l in range(len(p.view)):
+                for c in range(len(p.view[l])):
+                    if p.view[l][c] is None:
+                        continue
+                    elif p.view[l][c].obj_type == 'movable_wall':
+                        self.screen.blit(self.wall_img, (p.view[l][c].x, p.view[l][c].y))
+                    #elif p.view[l][c].obj_type == 'wall':
+                        #pg.draw.rect(self.screen, p.view[l][c].color, (p.view[l][c].x, p.view[l][c].y, p.view[l][c].size, p.view[l][c].size), 25)
+                    elif p.view[l][c].obj_type == 'hider' or p.view[l][c].obj_type == 'seeker':
+                        self.screen.blit(self.player_img, (p.view[l][c].x, p.view[l][c].y))
+                    else:
+                        pg.draw.rect(self.screen, BLACK, (p.view[l][c].x, p.view[l][c].y, p.view[l][c].size, p.view[l][c].size), 25)
 
 
     def draw_players(self):
@@ -153,7 +174,7 @@ class Game:
 
     def check_available_positions(self):
         positions = []
-        block = "movable_wall wall"
+        block = "movable_wall wall hider seeker"
         for p in self.players:
             av = [False, False, False, False]
             # av : 0 - sx , 1 - dx , 2 - u , 3 - d
@@ -283,4 +304,5 @@ class Game:
         i = pos[0] // self.size
         j = pos[1] // self.size
         idx = i + j * self.cols
-        print(self.map[idx].obj_type)
+        print(self.map[idx].obj_type + f", coordinate matriciali: {i}, {j}")
+    
