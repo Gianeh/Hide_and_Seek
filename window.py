@@ -1,5 +1,6 @@
 import pygame as pg
 from objects import Cell, Floor, Wall, MovableWall, Hider, Seeker
+import sys                                                      #<-------
 
 WHITE = (255, 255, 255)
 
@@ -11,6 +12,8 @@ class Game:
         self.size = size
         self.width = cols * size
         self.height = rows * size
+        pg.init()                                               #<--------
+        pg.display.set_caption('HIDE AND SEEK GAME')            #<--------
         self.screen = pg.display.set_mode((self.width, self.height))
         self.screen.fill(WHITE)
 
@@ -20,6 +23,10 @@ class Game:
 
         # define a clock to control the fps
         self.clock = pg.time.Clock()
+
+        self.player_img = pg.image.load('img3.png')             #<------------
+        self.player_img.set_colorkey(WHITE)                     #<------------
+        self.wall_img = pg.image.load('wall.png')               #<------------
 
     def init_map(self):
         cells = []
@@ -44,21 +51,27 @@ class Game:
 
     def run(self):
         while True:
-            self.clock.tick(15)
             for event in pg.event.get():
                 if event.type == pg.QUIT:
                     pg.quit()
-                    return
+                    sys.exit()                                      #<----------
+                if event.type == pg.KEYDOWN:                        #<----------
+                    self.control_players()                          #<----------
+                    #return
             self.screen.fill(WHITE)
             self.update()
 
             # flip the display buffer
-            pg.display.flip()
-            self.get_cell()
+            #pg.display.flip()
+            #self.get_cell()
+            pg.display.update()                                     #<-------------
+            self.clock.tick(15)                                     #<-------------
+
+
 
 
     def update(self):
-        self.control_players()
+        #self.control_players()
         self.check_map_integrity()
         self.draw_map()
         self.draw_players()
@@ -66,11 +79,16 @@ class Game:
     def draw_map(self):
         # blit all the map to the screen with a certain border width
         for cell in self.map:
-            pg.draw.rect(self.screen, cell.color, (cell.x, cell.y, cell.size, cell.size), 25)
+            if cell.obj_type == 'movable_wall':
+                self.screen.blit(self.wall_img, (cell.x, cell.y))                                           #<-----------
+            else:
+                pg.draw.rect(self.screen, cell.color, (cell.x, cell.y, cell.size, cell.size), 25)
+
 
     def draw_players(self):
         for player in self.players:
             pg.draw.rect(self.screen, player.color, (player.x, player.y, player.size, player.size), 0)
+            self.screen.blit(self.player_img, (player.x, player.y))
 
     def control_players(self):
         # get the keys that are currently pressed
@@ -80,12 +98,24 @@ class Game:
         # Control player 0 movement
         if keys[pg.K_w] and available_positions[0][2]:
             self.players[0].keyboard_move('u')
+        elif keys[pg.K_w]:
+            self.players[0].change_direction('u')
+
         elif keys[pg.K_s] and available_positions[0][3]:
             self.players[0].keyboard_move('d')
+        elif keys[pg.K_s]:
+            self.players[0].change_direction('d')
+
         elif keys[pg.K_a] and available_positions[0][0]:
             self.players[0].keyboard_move('l')
+        elif keys[pg.K_a]:
+            self.players[0].change_direction('l')
+
         elif keys[pg.K_d] and available_positions[0][1]:
             self.players[0].keyboard_move('r')
+        elif keys[pg.K_d]:
+            self.players[0].change_direction('r')
+
         elif keys[pg.K_LCTRL]:
             if not self.check_movable_wall(self.players[0]):
                 self.players[0].movable_wall = None
@@ -94,12 +124,24 @@ class Game:
         # control player 1 movement
         if keys[pg.K_UP] and available_positions[1][2]:
             self.players[1].keyboard_move('u')
+        elif keys[pg.K_UP]:
+            self.players[1].change_direction('u')
+
         elif keys[pg.K_DOWN] and available_positions[1][3]:
             self.players[1].keyboard_move('d')
+        elif keys[pg.K_DOWN]:
+            self.players[1].change_direction('d')
+
         elif keys[pg.K_LEFT] and available_positions[1][0]:
             self.players[1].keyboard_move('l')
+        elif keys[pg.K_LEFT]:
+            self.players[1].change_direction('l')
+
         elif keys[pg.K_RIGHT] and available_positions[1][1]:
             self.players[1].keyboard_move('r')
+        elif keys[pg.K_RIGHT]:
+            self.players[1].change_direction('r')
+
         elif keys[pg.K_RCTRL]:
             if not self.check_movable_wall(self.players[1]):
                 self.players[1].movable_wall = None
@@ -224,6 +266,13 @@ class Game:
                     self.map[pidx] = Floor(px, py, self.size)
                     p.movable_wall.prev_x = x
                     p.movable_wall.prev_y = y
+                    #queste due linee di codice prevengono che dopo aver preso un muro ed aver compiuto uno spostamento
+                    #se nel frame successivo il giocatore che detiene il muro non si muove, viene comunque richiamata la funzione
+                    #check_map_integrity con le coordinate precedenti e correnti del muro che sono diverse, ciò comporta la modifica della mappa
+                    #anche senza un effettivo spostamento del player in un determinato frame
+                    #con lue ultime due linee di codice che aggiornano prev_x e y si garantisce che il corpo dell "if pidx != idx:"
+                    #venga eseguito solo se la funzione move ha prima modificato p.movablee_wall.x e y === ordinamento della mappa solo se
+                    #è avvenuto un effettivo spostamento del movable_wall nel frame corrente
     
     # a function that logs the obj_type of pointed cell
     def get_cell(self):

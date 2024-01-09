@@ -1,4 +1,4 @@
-WHITE = (120, 120, 120)
+WHITE = (255, 255, 255)
 BLACK = (0, 0, 0)
 BLUE = (0, 0, 255)
 RED = (255, 0, 0)
@@ -52,7 +52,7 @@ class Player(Cell):
         self.direction = None
         self.movable_wall = None
         self.movable_wall_side = None
-        self.view = [[None * 4], [None * 4], [None * 4]]
+        #self.view = [[None * 4], [None * 4], [None * 4]]
 
     def keyboard_move(self, direction):
         if direction == 'u':
@@ -72,7 +72,15 @@ class Player(Cell):
             self.direction = 'r'
             if self.movable_wall is not None: self.movable_wall.move('r')
 
-        # print(f"I'm looking {self.view}")
+    def change_direction(self, direction):
+        if direction == 'u':
+            self.direction = 'u'
+        elif direction == 'd':
+            self.direction = 'd'
+        elif direction == 'l':
+            self.direction = 'l'
+        elif direction == 'r':
+            self.direction = 'r'
 
 
 class Hider(Player):
