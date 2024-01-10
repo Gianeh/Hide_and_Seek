@@ -4,6 +4,8 @@ BLUE = (0, 0, 255)
 RED = (255, 0, 0)
 GREEN = (0, 255, 0)
 
+WINTIME = 10
+
 
 class Cell:
     def __init__(self, x, y, size, color=WHITE, obj_type=None):
@@ -127,25 +129,39 @@ class Player(Cell):
                 for c in range(len(self.view[l])):
                     row = i-(c+1)
                     col = j+(l-1)
-                    self.view[l][c] = self.matrix[i-(c+1)][j+(l-1)] if row >= 0 and col >= 0 and col < len(self.matrix[0]) else None
+                    self.view[l][c] = self.matrix[row][col] if row >= 0 and col >= 0 and col < len(self.matrix[0]) else None
         elif self.direction == 'd':
             for l in range(len(self.view)):
                 for c in range(len(self.view[l])):
                     row = i+(c+1)
                     col = j+1-l
-                    self.view[l][c] = self.matrix[i+(c+1)][j+1-l] if row < len(self.matrix) and col >= 0 and col < len(self.matrix[0]) else None
+                    self.view[l][c] = self.matrix[row][col] if row < len(self.matrix) and col >= 0 and col < len(self.matrix[0]) else None
         elif self.direction == 'l':
             for l in range(len(self.view)):
                 for c in range(len(self.view[l])):
-                    row = i+l-1
+                    row = i-l+1
                     col = j-(c+1)
-                    self.view[l][c] = self.matrix[i+l-1][j-(c+1)] if row >= 0 and row < len(self.matrix) and col >= 0 else None
+                    self.view[l][c] = self.matrix[row][col] if row >= 0 and row < len(self.matrix) and col >= 0 else None
         elif self.direction == 'r':
             for l in range(len(self.view)):
                 for c in range(len(self.view[l])):
-                    row = i+1-l
+                    row = i+l-1
                     col = j+(c+1)
-                    self.view[l][c] = self.matrix[i+1-l][j+(c+1)] if row >= 0 and row < len(self.matrix) and col < len(self.matrix[0]) else None
+                    self.view[l][c] = self.matrix[row][col] if row >= 0 and row < len(self.matrix) and col < len(self.matrix[0]) else None
+
+        self.mask_view()
+    
+    def mask_view(self):
+        block = "wall movable_wall hider seeker"
+        for l in range(len(self.view)):
+            blocked = False
+            for c in range(len(self.view[l])):
+                if self.view[l][c] is None: continue
+                if self.view[l][c].obj_type in block and not blocked:
+                    blocked = True
+                    continue
+                if blocked: self.view[l][c] = None
+
 
 
     def map_to_matrix(self):
@@ -170,6 +186,16 @@ class Seeker(Player):
     def __init__(self, x, y, size, color=RED, obj_type='seeker', map=None, cols=None):
         super().__init__(x, y, size, color, obj_type, map, cols)
         self.direction = 'l'
+        self.seen = 0
+    
+    def see(self):
+        for l in self.view:
+            for c in l:
+                if c is None: continue
+                if c.obj_type == 'hider':
+                    self.seen += 1
+                    return
+        self.seen -= 1 if self.seen > 0 else 0
 
 
 

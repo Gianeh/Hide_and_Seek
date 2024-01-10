@@ -5,6 +5,7 @@ import sys                                                      #<-------
 WHITE = (255, 255, 255)
 BLACK = (0, 0, 0)
 
+WINTIME = 10
 
 class Game:
     def __init__(self, rows, cols, size):
@@ -54,7 +55,9 @@ class Game:
     def init_players(self):
         players = []
         players.append(Hider(300, 300, self.size, map=self.map, cols=self.cols))
+        players[0].look()
         players.append(Seeker(self.width - self.size - 300, self.height - self.size - 300, self.size, map=self.map, cols=self.cols))
+        players[1].look()
         return players
 
     def run(self):
@@ -65,24 +68,31 @@ class Game:
                     sys.exit()                                      #<----------
                 if event.type == pg.KEYDOWN:                        #<----------
                     self.control_players()                          #<----------
+                    for p in self.players:
+                        p.look()
+                        if p.obj_type == 'seeker':
+                            p.see()
+                            if p.seen >= WINTIME:
+                                print("seeker wins")
+                                #pg.quit()
+                                #sys.exit()
+
                     #return
             self.screen.fill(WHITE)
             self.update()
-
-            # self.view_screen.fill(WHITE)
-            self.draw_players_view()
 
             # flip the display buffer
             pg.display.flip()
             self.get_cell()
             #pg.display.update()                                     #<-------------
-            self.clock.tick(15)                                     #<-------------
+            self.clock.tick(144)                                      #<-------------
 
     def update(self):
         #self.control_players()
         #self.check_map_integrity()
         self.draw_map()
         self.draw_players()
+        self.draw_players_view()
 
     def draw_map(self):
         # blit all the map to the screen with a certain border width
@@ -95,7 +105,7 @@ class Game:
 
     def draw_players_view(self):
         for p in self.players:
-            p.look()
+            #p.look()
             for l in range(len(p.view)):
                 for c in range(len(p.view[l])):
                     if p.view[l][c] is None:
@@ -107,12 +117,11 @@ class Game:
                     elif p.view[l][c].obj_type == 'hider' or p.view[l][c].obj_type == 'seeker':
                         self.screen.blit(self.player_img, (p.view[l][c].x, p.view[l][c].y))
                     else:
-                        pg.draw.rect(self.screen, BLACK, (p.view[l][c].x, p.view[l][c].y, p.view[l][c].size, p.view[l][c].size), 25)
+                        pg.draw.rect(self.screen, (128+l*30,128+l*30,128+l*30), (p.view[l][c].x, p.view[l][c].y, p.view[l][c].size, p.view[l][c].size), 25)
 
 
     def draw_players(self):
         for player in self.players:
-            pg.draw.rect(self.screen, player.color, (player.x, player.y, player.size, player.size), 0)
             self.screen.blit(self.player_img, (player.x, player.y))
 
     def control_players(self):
