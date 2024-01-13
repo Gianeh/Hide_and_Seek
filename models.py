@@ -21,7 +21,7 @@ class Linear_QNet(nn.Module):
         return x
 
     def save(self):
-        model_folder_path = '.\model'
+        model_folder_path = './model'
         if not os.path.exists(model_folder_path):
             os.makedirs(model_folder_path)
 
@@ -29,7 +29,7 @@ class Linear_QNet(nn.Module):
         torch.save(self.state_dict(), path_name)
 
     def load(self):
-        model_folder_path = '.\model'
+        model_folder_path = './model'
         # check if model folder exists
         if not os.path.exists(model_folder_path):
             print("No model in path {}".format(model_folder_path))
@@ -55,7 +55,7 @@ class QNet(nn.Module):
         return x
 
     def save(self):
-        model_folder_path = '.\model'
+        model_folder_path = './model'
         if not os.path.exists(model_folder_path):
             os.makedirs(model_folder_path)
 
@@ -63,7 +63,7 @@ class QNet(nn.Module):
         torch.save(self.state_dict(), path_name)
 
     def load(self):
-        model_folder_path = '.\model'
+        model_folder_path = './model'
         # check if model folder exists
         if not os.path.exists(model_folder_path):
             print("No model in path {}".format(model_folder_path))
