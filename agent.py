@@ -2,11 +2,14 @@ import torch
 import random
 from collections import deque
 import numpy as np
-from models import Linear_QNet, QTrainer
+from models import QTrainer, QNet
+
+# import time for probing purposes
+import time
 
 MAX_MEMORY = 100000
-BATCH_SIZE = 1000
-LR = 0.001
+BATCH_SIZE = 10000
+LR = 0.01
 
 
 class Agent:
@@ -15,12 +18,14 @@ class Agent:
         self.epsilon = 0 # randomness
         self.gamma = 0.9 # discount rate
         self.memory = deque(maxlen=MAX_MEMORY) # automatic popleft()
-        self.brain = Linear_QNet(77, 256, 128, 5, name)
+        self.brain = QNet([77, 256, 128, 5], name)
         self.trainer = QTrainer(self.brain, LR, self.gamma)
 
-        self.brain.load()
+        if self.brain.load():
+            self.n_games = 80 # avoid exploration on successive runs
 
     def get_state(self, game, player):
+        start = time.time()
         x = player.x
         y = player.y
         x_norm = player.x / (game.width - player.size)
@@ -70,9 +75,14 @@ class Agent:
             neighbourhood.append(int(n))
 
         state = np.array([x_norm,y_norm] + view_vector + neighbourhood)
+
+        end = time.time()
+        #print("get_state: ", end - start)
+
         return state
 
     def get_action(self, state):
+        start = time.time()
         # tradeoff exploration / exploitation
         self.epsilon = 80 - self.n_games    # 80 is arbitrary
         final_action = [0,0,0,0,0]
@@ -84,6 +94,9 @@ class Agent:
             prediction = self.brain(current_state)
             action = torch.argmax(prediction).item()
             final_action[action] = 1
+        
+        end = time.time()
+        #print("get_action: ", end - start)
 
         return final_action
 
@@ -91,19 +104,36 @@ class Agent:
         self.memory.append((state, action, reward, next_state, gameover))
 
     def train_short_memory(self, state, action, reward, next_state, gameover):
+        start = time.time()
         self.trainer.train_step(state, action, reward, next_state, gameover)
+        end = time.time()
+        #print("train_short_memory: ", end - start)
 
     def train_long_memory(self):
+        start = time.time()
         if len(self.memory) > BATCH_SIZE:
-            batch_sample = random.sample(self.memory, BATCH_SIZE)
+            # batch_sample = random.sample(self.memory, BATCH_SIZE)
+            batch_sample = []
+            for i in range(len(self.memory)-1, len(self.memory) - 1 - BATCH_SIZE, -1):
+                batch_sample.append(self.memory[i])
         else:
             batch_sample = self.memory
+            print(type(batch_sample))
 
         states, actions, rewards, next_states, gameovers = zip(*batch_sample)
+
+        # convert to numpy arrays
+        states = np.array(states)
+        actions = np.array(actions)
+        rewards = np.array(rewards)
+        next_states = np.array(next_states)
+        gameovers = np.array(gameovers)
 
         self.trainer.train_step(states, actions, rewards, next_states, gameovers)
 
         self.brain.save()
+        end = time.time()
+        print("train_long_memory: ", end - start)
 
     
 

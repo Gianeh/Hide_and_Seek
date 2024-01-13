@@ -20,26 +20,13 @@ def main():
 
     frames = 0
     gameover = False
+    stop = False
     while True:
         # close the window
         for event in pg.event.get():
             if event.type == pg.QUIT:
                 pg.quit()
                 sys.exit()
-
-        # let the Agents control the players
-        if gameover:
-
-            # log some info avout generation
-            print('Generation: ', seeker.n_games, ' Reward: ', game.players[1].reward, ' Epsilon: ', seeker.epsilon)
-
-            game.reset()
-            frames = 0
-            gameover = False
-            hider.n_games += 1
-            hider.train_long_memory()
-            seeker.n_games += 1
-            seeker.train_long_memory()
 
         # let the Agents control the players
         
@@ -65,16 +52,36 @@ def main():
             seeker.train_short_memory(seeker_state, seeker_action, seeker_reward, seeker_new_state, gameover)
             seeker.remember(seeker_state, seeker_action, seeker_reward, seeker_new_state, gameover)
 
+        if gameover or stop:
+
+            # log some info avout generation
+            print('Generation: ', seeker.n_games, ' Epsilon: ', seeker.epsilon,
+                '\nSeeker Reward: ', game.players[1].reward,
+                '\nHider Reward: ', game.players[0].reward)
+
+            game.reset()
+            frames = 0
+            gameover = False
+            stop = False
+            hider.n_games += 1
+            hider.train_long_memory()
+            seeker.n_games += 1
+            seeker.train_long_memory()
+
         # check if gameover
-        if game.players[1].seen >= WINTIME or frames == MAX_TIME:
+        if game.players[1].seen >= WINTIME:
             gameover = True
+            
+        if frames >= MAX_TIME:
+            stop = True
 
         # actual game loop
         game.screen.fill(WHITE)
         game.update()
         pg.display.flip()
         # game.log_cell()
-        game.clock.tick(20)
+        game.clock.tick(144)
+
 
         # log players positions
         # print("Hider: ", game.players[0].x, game.players[0].y)

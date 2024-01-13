@@ -141,69 +141,13 @@ class Game:
             # hider loses!
             if gameover:
                 reward -= 100
+                print("Hider loses!")
             reward -= player.seen * 4
             reward += 1 if player.seen == 0 else 0
 
         player.reward += reward
         return reward
         
-    def control_players(self):
-        # get the keys that are currently pressed
-        available_positions = self.check_available_positions()
-        keys = pg.key.get_pressed()
-
-        # Control player 0 movement
-        if keys[pg.K_w] and available_positions[0][2]:
-            self.players[0].keyboard_move('u')
-        elif keys[pg.K_w]:
-            self.players[0].change_direction('u')
-
-        elif keys[pg.K_s] and available_positions[0][3]:
-            self.players[0].keyboard_move('d')
-        elif keys[pg.K_s]:
-            self.players[0].change_direction('d')
-
-        elif keys[pg.K_a] and available_positions[0][0]:
-            self.players[0].keyboard_move('l')
-        elif keys[pg.K_a]:
-            self.players[0].change_direction('l')
-
-        elif keys[pg.K_d] and available_positions[0][1]:
-            self.players[0].keyboard_move('r')
-        elif keys[pg.K_d]:
-            self.players[0].change_direction('r')
-
-        elif keys[pg.K_LCTRL]:
-            if not self.check_movable_wall(self.players[0]):
-                self.players[0].movable_wall = None
-                self.players[0].movable_wall_side = None
-
-        # control player 1 movement
-        elif keys[pg.K_UP] and available_positions[1][2]:
-            self.players[1].keyboard_move('u')
-        elif keys[pg.K_UP]:
-            self.players[1].change_direction('u')
-
-        elif keys[pg.K_DOWN] and available_positions[1][3]:
-            self.players[1].keyboard_move('d')
-        elif keys[pg.K_DOWN]:
-            self.players[1].change_direction('d')
-
-        elif keys[pg.K_LEFT] and available_positions[1][0]:
-            self.players[1].keyboard_move('l')
-        elif keys[pg.K_LEFT]:
-            self.players[1].change_direction('l')
-
-        elif keys[pg.K_RIGHT] and available_positions[1][1]:
-            self.players[1].keyboard_move('r')
-        elif keys[pg.K_RIGHT]:
-            self.players[1].change_direction('r')
-
-        elif keys[pg.K_RCTRL]:
-            if not self.check_movable_wall(self.players[1]):
-                self.players[1].movable_wall = None
-                self.players[1].movable_wall_side = None
-    
     def check_available_positions(self, p):
         av = {'sx': False, 'dx': False, 'u':False, 'd':False}
         # av : 0 - sx , 1 - dx , 2 - u , 3 - d
