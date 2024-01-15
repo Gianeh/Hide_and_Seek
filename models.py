@@ -30,11 +30,11 @@ class QNet(nn.Module):
 
     def load(self):
         model_folder_path = './model'
-        # check if model folder exists
-        if not os.path.exists(model_folder_path):
-            print("No model in path {}".format(model_folder_path))
-            return False
+        # check if model file in folder model exists
         path_name = os.path.join(model_folder_path, self.name)
+        if not os.path.exists(path_name):
+            print("No model in path {}".format(path_name))
+            return False
         self.load_state_dict(torch.load(path_name))
         return True
 
