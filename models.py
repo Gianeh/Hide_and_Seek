@@ -8,15 +8,13 @@ class QNet(nn.Module):
     def __init__(self, layers, name='model'):
         super().__init__()
 
-        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
         self.name = name
-        self.layers = nn.ModuleList().to(self.device)
+        self.layers = nn.ModuleList()
         for i in range(len(layers) - 1):
             self.layers.append(nn.Linear(layers[i], layers[i + 1]))
 
     def forward(self, x):
-        x.to(self.device)
+        x
         for layer in self.layers[:-1]:
             x = F.relu(layer(x))
         x = self.layers[-1](x)
@@ -51,6 +49,8 @@ class QTrainer:
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.optimizer = optim.Adam(model.parameters(), lr=self.lr)
         self.criterion = nn.MSELoss()
+
+        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     def train_step(self, state, action, reward, next_state, done):
         state = torch.tensor(state, dtype=torch.float).to(self.device)

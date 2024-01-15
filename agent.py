@@ -18,7 +18,8 @@ class Agent:
         self.epsilon = 0 # randomness
         self.gamma = 0.9 # discount rate
         self.memory = deque(maxlen=MAX_MEMORY) # automatic popleft()
-        self.brain = QNet([77, 256, 128, 5], name)
+        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        self.brain = QNet([77, 256, 128, 5], name).to(self.device)
         self.trainer = QTrainer(self.brain, LR, self.gamma)
 
         if self.brain.load():
@@ -90,7 +91,7 @@ class Agent:
             action = random.randint(0, 4)
             final_action[action] = 1
         else:
-            current_state = torch.tensor(state, dtype=torch.float)
+            current_state = torch.tensor(state, dtype=torch.float).to(self.device)
             prediction = self.brain(current_state)
             action = torch.argmax(prediction).item()
             final_action[action] = 1
