@@ -59,6 +59,7 @@ class QTrainer:
         reward = torch.tensor(reward, dtype=torch.float).to(self.device)
         # (n, x)
 
+        # in case of short memory training - online training
         if len(state.shape) == 1:
             # (1, x)
             state = torch.unsqueeze(state, 0)
@@ -71,6 +72,7 @@ class QTrainer:
         pred = self.model(state)
 
         target = pred.clone()
+
         for idx in range(len(done)):
             Q_new = reward[idx]
             if not done[idx]:
@@ -86,5 +88,10 @@ class QTrainer:
         loss.backward()
 
         self.optimizer.step()
+
+
+        # state_0 -> pred_0 = [0.1, 0.3, 1.0, 0.2, 0.0] -> action_0 = [0, 0, 1, 0, 0] -> target_0 = [0.1, 0.3, Q_new, 0.2, 0.0]
+        # state_new -> pred_new = [1.5, 0.1, 0.1, 0.1, 0.0] -> Q_new = reward_0 + gamma * max(pred_new)
+        #                                                                                       ^^^^ (1.5)
 
 

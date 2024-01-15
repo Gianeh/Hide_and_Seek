@@ -1,7 +1,7 @@
 import pygame as pg
 from objects import Cell, Floor, Wall, MovableWall, Hider, Seeker
 import numpy as np
-import sys
+import random
 
 WHITE = (255, 255, 255)
 BLACK = (0, 0, 0)
@@ -48,7 +48,7 @@ class Game:
             for col in range(self.cols):
                 x = col * self.size
                 y = row * self.size
-                if col % 3 == 0 and row % 5 == 0:
+                if col % 6 == 0 and row % 7 == 0:
                     map[row].append(MovableWall(x, y, self.size))
                 else:
                     map[row].append(Floor(x, y, self.size))
@@ -56,9 +56,20 @@ class Game:
 
     def init_players(self):
         players = []
-        players.append(Hider(300, 300, self.size, map=self.map, cols=self.cols))
+        i = random.randint(0, self.cols - 1)
+        j = random.randint(0, self.rows - 1)
+
+        while self.map[i][j].obj_type != 'floor':
+            i = random.randint(0, self.cols - 1)
+            j = random.randint(0, self.rows - 1)
+        players.append(Hider(i*self.size, j*self.size, self.size, map=self.map, cols=self.cols))
+
+        while self.map[i][j].obj_type != 'floor':
+            i = random.randint(0, self.cols - 1)
+            j = random.randint(0, self.rows - 1)
+        players.append(Seeker(i*self.size, j*self.size, self.size, map=self.map, cols=self.cols))
+
         players[0].look()
-        players.append(Seeker(self.width - self.size - 300, self.height - self.size - 300, self.size, map=self.map, cols=self.cols))
         players[1].look()
         return players
 
@@ -131,7 +142,7 @@ class Game:
             # seeker wins!
             if gameover:
                 reward += 100
-            reward += player.seen * 4
+            reward += player.seen * 2
             reward -= 1 if player.seen == 0 else 0
         
         else: # hider
@@ -142,8 +153,10 @@ class Game:
             if gameover:
                 reward -= 100
                 print("Hider loses!")
-            reward -= player.seen * 4
-            reward += 1 if player.seen == 0 else 0
+
+            other = self.players[1] if player == self.players[0] else self.players[0]
+            reward -= other.seen * 2
+            reward += 1 if other.seen == 0 else 0
 
         player.reward += reward
         return reward
