@@ -14,7 +14,6 @@ class QNet(nn.Module):
             self.layers.append(nn.Linear(layers[i], layers[i + 1]))
 
     def forward(self, x):
-        x
         for layer in self.layers[:-1]:
             x = F.relu(layer(x))
         x = self.layers[-1](x)

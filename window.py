@@ -60,14 +60,16 @@ class Game:
         j = random.randint(0, self.rows - 1)
 
         while self.map[i][j].obj_type != 'floor':
-            i = random.randint(0, self.cols - 1)
-            j = random.randint(0, self.rows - 1)
-        players.append(Hider(i*self.size, j*self.size, self.size, map=self.map, cols=self.cols))
+            i = random.randint(0, self.rows - 1)
+            j = random.randint(0, self.cols - 1)
+        players.append(Hider(j*self.size, i*self.size, self.size, map=self.map, cols=self.cols))
+        #print("coordinates: ", i, j ,"obj_type: ",self.map[i][j].obj_type, "\n")
 
         while self.map[i][j].obj_type != 'floor':
             i = random.randint(0, self.cols - 1)
             j = random.randint(0, self.rows - 1)
         players.append(Seeker(i*self.size, j*self.size, self.size, map=self.map, cols=self.cols))
+        #print("coordinates: ", i, j, "obj_type: ", self.map[i][j].obj_type, "\n")
 
         players[0].look()
         players[1].look()
@@ -253,5 +255,5 @@ class Game:
         pos = pg.mouse.get_pos()
         i = pos[0] // self.size
         j = pos[1] // self.size
-        idx = i + j * self.cols
-        print(self.map[idx].obj_type + f", coordinate matriciali: {i}, {j}")
+        #idx = i + j * self.cols
+        print(self.map[i][j].obj_type + f", coordinate matriciali: {i}, {j}")

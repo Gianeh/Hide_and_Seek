@@ -123,12 +123,8 @@ def main():
             game.screen.fill(WHITE)
             game.update()
             pg.display.flip()
-            game.clock.tick(60)
+            game.clock.tick(3)
 
-
-        # log players positions
-        # print("Hider: ", game.players[0].x, game.players[0].y)
-        # print("Seeker: ", game.players[1].x, game.players[1].y)
 
         frames += 1
 
