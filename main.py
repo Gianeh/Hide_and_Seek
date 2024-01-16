@@ -3,6 +3,7 @@ import pygame as pg
 from window import Game
 from agent import Agent
 import sys
+import argparse
 
 WHITE = (255, 255, 255)
 BLACK = (0, 0, 0)
@@ -12,14 +13,20 @@ WINTIME = 20
 
 
 def main():
-    # start game!
+    # parse arguments to select which agent to train
+    parser = argparse.ArgumentParser(description='Hide and Seek RL in a grid!')
+    parser.add_argument('--hide', action='store_true', help='train the hider')
+    parser.add_argument('--seek', action='store_true', help='train the seeker')
+    args = parser.parse_args()
+
+    hide = args.hide
+    seek = args.seek
+
+    # Instantiate Game and Agents
     game = Game(20,20,30)
     hider = Agent('hider')
     seeker = Agent('seeker')
 
-    hide = True
-    seek = True
-    #window.run()
 
     frames = 0
     gameover = False
@@ -50,7 +57,7 @@ def main():
 
         # let the Agents control the players
         
-        if frames % 2 or gameover and hide:
+        if (frames % 2 or gameover) and hide:
             if not gameover:
                 game.players[0].look()
                 hider_state = hider.get_state(game, game.players[0])
@@ -61,7 +68,7 @@ def main():
             hider.train_short_memory(hider_state, hider_action, hider_reward, hider_new_state, gameover)
             hider.remember(hider_state, hider_action, hider_reward, hider_new_state, gameover)
         
-        if not frames % 2 or gameover and seek:
+        if (not frames % 2 or gameover) and seek:
             if not gameover:
                 game.players[1].look()
                 seeker_state = seeker.get_state(game, game.players[1])
@@ -76,26 +83,33 @@ def main():
         if gameover or stop:
 
             # log some info avout generation
-            print('Generation: ', seeker.n_games, ' Epsilon: ', seeker.epsilon,
-                '\nSeeker Reward: ', game.players[1].reward,
-                '\nHider Reward: ', game.players[0].reward)
+            print("*"*50)
+            print(f"Generation: {seeker.n_games}")
+            if seeker.epsilon > 0: print(f"Exploring and Exploiting with Epsilon: {seeker.epsilon}")
+            else: print("Exploiting only")
+            print(f"\033[94mSeeker Reward: {game.players[1].reward}\033[0m")
+            print(f"\033[92mHider Reward: {game.players[0].reward}\033[0m")
 
             game.reset()
             frames = 0
             gameover = False
             stop = False
             hider.n_games += 1
-            hider.train_long_memory()
+            if hide: hider.train_long_memory()
             seeker.n_games += 1
-            seeker.train_long_memory()
+            if seek: seeker.train_long_memory()
+
+            if (hider.n_games % 5 == 0 or seeker.n_games % 5 == 0) and (hider.n_games != 0 and seeker.n_games != 0):
+                if hide : hider.train_replay("reward")
+                if seek : seeker.train_replay("reward")
 
             if (hider.n_games % 10 == 0 or seeker.n_games % 10 == 0) and (hider.n_games != 0 and seeker.n_games != 0):
-                if hide : hider.train_replay("abs_reward")
-                if seek : seeker.train_replay("abs_reward")
+                if hide : hider.train_replay("neg_reward")
+                if seek : seeker.train_replay("neg_reward")
             
-            if (hider.n_games % 100 == 0 or seeker.n_games % 100 == 0) and (hider.n_games != 0 and seeker.n_games != 0):
-                if hide : hider.clean_memory(200)
-                if seek : seeker.clean_memory(200)
+            if (hider.n_games % 30 == 0 or seeker.n_games % 30 == 0) and (hider.n_games != 0 and seeker.n_games != 0):
+                if hide : hider.clean_memory(duplicates=10)
+                if seek : seeker.clean_memory(duplicates=10)
 
         # check if gameover
         if game.players[1].seen >= WINTIME:
@@ -109,7 +123,7 @@ def main():
             game.screen.fill(WHITE)
             game.update()
             pg.display.flip()
-            game.clock.tick(30)
+            game.clock.tick(60)
 
 
         # log players positions

@@ -10,7 +10,7 @@ import time
 
 MAX_MEMORY = 100000
 BATCH_SIZE = 10000
-LR = 0.01
+LR = 0.03
 
 
 class Agent:
@@ -18,13 +18,13 @@ class Agent:
         self.name = name
         self.n_games = 0
         self.epsilon = 0 # randomness
-        self.randomness = 80
+        self.randomness = 200
         self.gamma = 0.9 # discount rate
         self.memory = deque(maxlen=MAX_MEMORY) # automatic popleft()
         self.init_memory() # reload all previous memeories up to MAX_MEMORY
         self.replay_memory = []
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        self.brain = QNet([79, 256, 128, 5], self.name).to(self.device)
+        self.brain = QNet([79, 256, 512, 256, 5], self.name).to(self.device)
         self.trainer = QTrainer(self.brain, LR, self.gamma)
 
         if self.brain.load():
@@ -204,7 +204,8 @@ class Agent:
 
         self.brain.save()
         end = time.time()
-        print("train_long_memory: ", end - start)
+        if self.name == "seeker": print(f"\033[94mtraning seeker's long memory took: {end - start} seconds\033[0m")
+        else: print(f"\033[92mtraning hider's long memory took: {end - start} seconds\033[0m")
 
     def train_replay(self, criterion="reward", size=BATCH_SIZE):
         start = time.time()
@@ -223,36 +224,39 @@ class Agent:
         self.trainer.train_step(states, actions, rewards, next_states, gameovers)
 
         end = time.time()
-
-        print(f"train_replay with {criterion} criterion: ", end - start)
+        print("+"*50)
+        print(f"\033[96mtrain_replay with {criterion} criterion in: {end - start} seconds\033[0m")
+        print("+"*50)
         self.replay_memory = []
 
     def clean_memory(self, duplicates=100):
         start = time.time()
         # clean identical lines if number is over
-        with open("./memory/" + self.name +".txt", "r") as f:
+        file_path = "./memory/" + self.name + ".txt"
+        with open(file_path, "r") as f:
             lines = f.readlines()
         count = 0
-        ereased = 0
-        for i in range(len(lines)-1):
-            if lines[i] == lines[i+1]:
+        erased = 0
+        i = 0
+        while i < len(lines) - 1:
+            if lines[i] == lines[i + 1]:
                 count += 1
                 if count == duplicates:
-                    lines = lines[:i-duplicates+1] + lines[i+1:]
+                    lines = lines[:i - duplicates + 2] + lines[i + 1:]
                     count = 0
-                    ereased += duplicates
+                    erased += duplicates
             else:
                 count = 0
+            i += 1
 
-        with open("./memory/" + self.name +".txt", "w") as f:
+        with open(file_path, "w") as f:
             f.writelines(lines)
 
         end = time.time()
-        print("#"*50)
-        print(f"clean_memory for {self.name}, ereased {ereased} lines in: ", end - start, " seconds")
-        print("#"*50)
-
-            
+        print("#" * 50)
+        print(f"\033[92mclean_memory for {self.name}, erased {erased} lines in: ", end - start, " seconds\033[0m")
+        print("#" * 50)
+    
 
     
 
