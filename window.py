@@ -146,7 +146,7 @@ class Game:
 
         return valid
 
-    def reward(self, player, valid_action, gameover):
+    def reward(self, player, valid_action, wintime):
         # look a second time to update the view in order to calculate reward and seen variable coherently
         player.look()
         reward = 0
@@ -156,8 +156,10 @@ class Game:
             player.see()
 
             # seeker wins!
-            if gameover:
-                reward += 15
+            if player.seen >= wintime:
+                reward += 100
+                print("Seeker wins!")
+                print("Seeker seen: ", player.seen)
 
             reward += player.seen
             reward -= 1 if player.seen == 0 else 0
@@ -167,21 +169,27 @@ class Game:
         
         else: # hider
             # let hider see
-            player.see()
-
-            # hider loses!
-            if gameover:
-                reward -= 15
-                print("Hider loses!")
+            player.see()    # theorically is no longer needed
 
             other = self.players[1] if player == self.players[0] else self.players[0]
+            # let seeker see
+            other.see()
+
+            # hider loses!
+            if other.seen >= wintime:
+                reward -= 100
+                print("Hider loses!")
+            
             reward -= other.seen
             reward += 1 if other.seen == 0 else 0
+
 
             if not valid_action:
                 reward -= 1
 
+        # update player's reward just for log purposes
         player.reward += reward
+        # return actual reward for training purposes
         return reward
         
     def check_available_positions(self, p):
