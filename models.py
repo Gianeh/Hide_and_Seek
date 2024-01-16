@@ -37,11 +37,58 @@ class QNet(nn.Module):
         self.load_state_dict(torch.load(path_name))
         return True
 
+class ConvQNet(nn.Module):
+    # conv_layers = [[n_in_channels, n_out_channels, kernel_size, stride, padding], [n_in_channels, n_out_channels, kernel_size, stride, padding], ...]
+    def __init__(self, conv_layers, mlp_layers, name='model'):
+        super().__init__()
 
+        self.name = name
+        self.conv_layers = nn.ModuleList()
+        for layer in conv_layers:
+            self.conv_layers.append(nn.Conv2d(in_channels=layer[0], out_channels=layer[1], kernel_size=layer[2],
+                                                stride=layer[3], padding=layer[4]))
+        # convolutional layers definition is not flexible and needs a coherent input
+
+        self.mlp_layers = nn.ModuleList()
+        for i in range(len(mlp_layers) - 1):
+            self.mlp_layers.append(nn.Linear(mlp_layers[i], mlp_layers[i + 1]))
+
+    def forward(self, x):
+        if len(x.shape) == 2:  # Only height and width present
+            x = x.unsqueeze(0)  # Add channel dimension
+
+        for layer in self.conv_layers:
+            x = F.relu(layer(x))
+
+        # flatten
+        x = x.view(x.size(0), -1)
+        
+        for layer in self.mlp_layers[:-1]:
+            x = F.relu(layer(x))
+        x = self.mlp_layers[-1](x)
+        return x
+    
+    def save(self):
+        model_folder_path = './model'
+        if not os.path.exists(model_folder_path):
+            os.makedirs(model_folder_path)
+
+        path_name = os.path.join(model_folder_path, self.name)
+        torch.save(self.state_dict(), path_name)
+
+    def load(self):
+        model_folder_path = './model'
+        # check if model file in folder model exists
+        path_name = os.path.join(model_folder_path, self.name)
+        if not os.path.exists(path_name):
+            print("No model in path {}".format(path_name))
+            return False
+        self.load_state_dict(torch.load(path_name))
+        return True
 
 
 class QTrainer:
-    def __init__(self, model, lr, gamma):
+    def __init__(self, model, lr, gamma, convolutional=False):
         self.lr = lr
         self.gamma = gamma
         self.model = model
@@ -51,6 +98,8 @@ class QTrainer:
 
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
+        self.convolutional = convolutional
+
     def train_step(self, state, action, reward, next_state, done):
         state = torch.tensor(state, dtype=torch.float).to(self.device)
         next_state = torch.tensor(next_state, dtype=torch.float).to(self.device)
@@ -59,13 +108,26 @@ class QTrainer:
         # (n, x)
 
         # in case of short memory training - online training
-        if len(state.shape) == 1:
-            # (1, x)
-            state = torch.unsqueeze(state, 0)
-            next_state = torch.unsqueeze(next_state, 0)
-            action = torch.unsqueeze(action, 0)
-            reward = torch.unsqueeze(reward, 0)
-            done = (done, )
+        if not self.convolutional:
+            if len(state.shape) == 1:
+                # (1, x)
+                state = torch.unsqueeze(state, 0)
+                next_state = torch.unsqueeze(next_state, 0)
+                action = torch.unsqueeze(action, 0)
+                reward = torch.unsqueeze(reward, 0)
+                done = (done, )
+        else:
+            if len(state.shape) == 2:  # Only height and width present
+                state = state.unsqueeze(0)  # Add channel dimension
+                next_state = next_state.unsqueeze(0)
+                done = (done, )
+                action = action.unsqueeze(0)
+                reward = reward.unsqueeze(0)
+
+
+            # Add batch dimension
+            state = torch.unsqueeze(state, 1)
+            next_state = torch.unsqueeze(next_state, 1)
 
         # 1: predicted Q values with current state
         pred = self.model(state)

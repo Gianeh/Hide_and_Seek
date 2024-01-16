@@ -48,10 +48,13 @@ class Game:
             for col in range(self.cols):
                 x = col * self.size
                 y = row * self.size
+                '''
                 if col % 6 == 0 and row % 7 == 0:
                     map[row].append(MovableWall(x, y, self.size))
                 else:
                     map[row].append(Floor(x, y, self.size))
+                '''
+                map[row].append(Floor(x, y, self.size))
         return map
 
     def init_players(self):
@@ -116,23 +119,34 @@ class Game:
     
     def control_player(self, player, action):
         available_positions = self.check_available_positions(player)
+        valid = False
 
         # get maximum value's index from network output
         action = np.argmax(action)
         if action == 0 and available_positions['u']:
             player.keyboard_move('u')
+            valid = True
         elif action == 1 and available_positions['d']:
             player.keyboard_move('d')
+            valid = True
         elif action == 2 and available_positions['sx']:
             player.keyboard_move('l')
+            valid = True
         elif action == 3 and available_positions['dx']:
             player.keyboard_move('r')
+            valid = True
         elif action == 4:
-            if not self.check_movable_wall(player):
+            valid = self.check_movable_wall(player)
+            if not valid:
                 player.movable_wall = None
                 player.movable_wall_side = None
+        elif action == 5:
+            valid = True
+            # stand still
 
-    def reward(self, player, gameover):
+        return valid
+
+    def reward(self, player, valid_action, gameover):
         # look a second time to update the view in order to calculate reward and seen variable coherently
         player.look()
         reward = 0
@@ -143,9 +157,13 @@ class Game:
 
             # seeker wins!
             if gameover:
-                reward += 100
-            reward += player.seen * 2
+                reward += 15
+
+            reward += player.seen
             reward -= 1 if player.seen == 0 else 0
+
+            if not valid_action:
+                reward -= 1
         
         else: # hider
             # let hider see
@@ -153,12 +171,15 @@ class Game:
 
             # hider loses!
             if gameover:
-                reward -= 100
+                reward -= 15
                 print("Hider loses!")
 
             other = self.players[1] if player == self.players[0] else self.players[0]
-            reward -= other.seen * 2
+            reward -= other.seen
             reward += 1 if other.seen == 0 else 0
+
+            if not valid_action:
+                reward -= 1
 
         player.reward += reward
         return reward

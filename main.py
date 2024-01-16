@@ -1,7 +1,7 @@
 # Hide and Seek in a grid!
 import pygame as pg
 from window import Game
-from agent import Agent
+from agent import Agent_alpha_0, Agent_alpha_1, Agent_hivemind_0
 import sys
 import argparse
 
@@ -23,12 +23,13 @@ def main():
     seek = args.seek
 
     # Instantiate Game and Agents
-    game = Game(20,20,30)
-    hider = Agent('hider')
-    seeker = Agent('seeker')
+    game = Game(12,12,40)
+    hider = Agent_hivemind_0('hider')
+    seeker = Agent_hivemind_0('seeker')
 
 
     frames = 0
+    framerate = 60
     gameover = False
     stop = False
     render = True
@@ -53,6 +54,16 @@ def main():
                     # exploit
                     hider.randomness = 0
                     seeker.randomness = 0
+                if event.key == pg.K_UP:
+                    # increase framerate
+                    framerate += 10
+                if event.key == pg.K_DOWN:
+                    # decrease framerate
+                    framerate -= 10
+                    if framerate < 0: framerate = 0 
+                if event.key == pg.K_p:
+                    # pause
+                    pg.event.wait()
 
 
         # let the Agents control the players
@@ -62,22 +73,22 @@ def main():
                 game.players[0].look()
                 hider_state = hider.get_state(game, game.players[0])
                 hider_action = hider.get_action(hider_state)
-                game.control_player(game.players[0], hider_action)
-            hider_reward = game.reward(game.players[0], gameover)
+                valid_action = game.control_player(game.players[0], hider_action)
+            hider_reward = game.reward(game.players[0], valid_action, gameover)
             hider_new_state = hider.get_state(game, game.players[0])
             hider.train_short_memory(hider_state, hider_action, hider_reward, hider_new_state, gameover)
-            hider.remember(hider_state, hider_action, hider_reward, hider_new_state, gameover)
+            hider.remember(hider_state, hider_action, hider_reward, hider_new_state, gameover or stop)
         
         if (not frames % 2 or gameover) and seek:
             if not gameover:
                 game.players[1].look()
                 seeker_state = seeker.get_state(game, game.players[1])
                 seeker_action = seeker.get_action(seeker_state)
-                game.control_player(game.players[1], seeker_action)
-            seeker_reward = game.reward(game.players[1], gameover)
+                valid_action = game.control_player(game.players[1], seeker_action)
+            seeker_reward = game.reward(game.players[1], valid_action, gameover)
             seeker_new_state = seeker.get_state(game, game.players[1])
             seeker.train_short_memory(seeker_state, seeker_action, seeker_reward, seeker_new_state, gameover)
-            seeker.remember(seeker_state, seeker_action, seeker_reward, seeker_new_state, gameover)
+            seeker.remember(seeker_state, seeker_action, seeker_reward, seeker_new_state, gameover or stop)
 
 
         if gameover or stop:
@@ -98,7 +109,7 @@ def main():
             if hide: hider.train_long_memory()
             seeker.n_games += 1
             if seek: seeker.train_long_memory()
-
+            '''
             if (hider.n_games % 5 == 0 or seeker.n_games % 5 == 0) and (hider.n_games != 0 and seeker.n_games != 0):
                 if hide : hider.train_replay("reward")
                 if seek : seeker.train_replay("reward")
@@ -110,6 +121,7 @@ def main():
             if (hider.n_games % 30 == 0 or seeker.n_games % 30 == 0) and (hider.n_games != 0 and seeker.n_games != 0):
                 if hide : hider.clean_memory(duplicates=10)
                 if seek : seeker.clean_memory(duplicates=10)
+            '''
 
         # check if gameover
         if game.players[1].seen >= WINTIME:
@@ -123,7 +135,7 @@ def main():
             game.screen.fill(WHITE)
             game.update()
             pg.display.flip()
-            game.clock.tick(3)
+            game.clock.tick(framerate)
 
 
         frames += 1

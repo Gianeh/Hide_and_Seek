@@ -173,7 +173,7 @@ class Hider(Player):
                 if c.obj_type == 'seeker':
                     self.seen += 1
                     return
-        self.seen -= 1 if self.seen > 0 else 0
+        self.seen = 0
 
 
 class Seeker(Player):
@@ -188,5 +188,5 @@ class Seeker(Player):
                 if c.obj_type == 'hider':
                     self.seen += 1
                     return
-        self.seen -= 1 if self.seen > 0 else 0
+        self.seen = 0
 
