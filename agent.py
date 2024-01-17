@@ -8,9 +8,9 @@ import os
 # import time for probing purposes
 import time
 
-MAX_MEMORY = 100000
-BATCH_SIZE = 10000
-LR = 0.03
+MAX_MEMORY = 10000
+BATCH_SIZE = 1000
+LR = 0.001
 
 # Agent Alpha 0 is the first complete prototype, every piece work but learning seems capped by input encoding or other unknown factors
 class Agent_alpha_0:
@@ -388,7 +388,7 @@ class Agent_alpha_1:
         self.epsilon = self.randomness - self.n_games//3    # 80 is arbitrary --> //3 means we explore much more time with constant randomness probability!!
         final_action = [0,0,0,0,0,0]
         if random.randint(0, 200) < self.epsilon:   # 200 is arbitrary
-            action = random.randint(0, 4)
+            action = random.randint(0, 5)
             final_action[action] = 1
         else:
             state = np.array(state)
