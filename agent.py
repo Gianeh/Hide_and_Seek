@@ -263,7 +263,7 @@ class Agent_alpha_1:
         self.name = name
         self.n_games = 0
         self.epsilon = 0 # randomness
-        self.randomness = 200
+        self.randomness = 80
         self.gamma = 0.9 # discount rate
         self.memory = deque(maxlen=MAX_MEMORY) # automatic popleft()
         self.init_memory() # reload all previous memeories up to MAX_MEMORY
@@ -385,7 +385,7 @@ class Agent_alpha_1:
     def get_action(self, state):
         start = time.time()
         # tradeoff exploration / exploitation
-        self.epsilon = self.randomness - self.n_games    # 80 is arbitrary
+        self.epsilon = self.randomness - self.n_games//3    # 80 is arbitrary --> //3 means we explore much more time with constant randomness probability!!
         final_action = [0,0,0,0,0,0]
         if random.randint(0, 200) < self.epsilon:   # 200 is arbitrary
             action = random.randint(0, 4)
