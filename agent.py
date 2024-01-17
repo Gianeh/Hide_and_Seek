@@ -2,7 +2,7 @@ import torch
 import random
 from collections import deque
 import numpy as np
-from models import QTrainer, QNet, ConvQNet
+from models import QTrainer, QTrainer_beta_1, QNet, ConvQNet
 import os
 
 # import time for probing purposes
@@ -270,7 +270,7 @@ class Agent_alpha_1:
         self.replay_memory = []
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.brain = QNet([19, 128, 128, 6], self.name).to(self.device)
-        self.trainer = QTrainer(self.brain, LR, self.gamma)
+        self.trainer = QTrainer_beta_1(self.brain, LR, self.gamma)
 
         if self.brain.load():
             print("Model loaded")

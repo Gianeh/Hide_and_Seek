@@ -1,3 +1,5 @@
+import copy
+
 import torch
 import torch.nn as nn
 import torch.optim as optim
@@ -156,3 +158,76 @@ class QTrainer:
         #                                                                                       ^^^^ (1.5)
 
 
+class QTrainer_beta_1:
+    def __init__(self, model, lr, gamma, convolutional=False, update_steps = 1000):
+        self.lr = lr
+        self.gamma = gamma
+        self.model = model
+        self.target_predictor = self.model
+        self.target_predictor.load_state_dict(self.model.state_dict())
+        self.train_steps = 0
+        self.update_steps = update_steps
+        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        self.optimizer = optim.Adam(model.parameters(), lr=self.lr)
+        self.criterion = nn.MSELoss()
+
+        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+        self.convolutional = convolutional
+
+    def train_step(self, state, action, reward, next_state, done):
+
+        self.train_steps += 1
+
+        if self.train_steps == self.update_steps:
+            self.train_steps = 0
+            self.target_predictor.load_state_dict(self.model.state_dict())
+
+
+        state = torch.tensor(state, dtype=torch.float).to(self.device)
+        next_state = torch.tensor(next_state, dtype=torch.float).to(self.device)
+        action = torch.tensor(action, dtype=torch.long).to(self.device)
+        reward = torch.tensor(reward, dtype=torch.float).to(self.device)
+        # (n, x)
+
+        # in case of short memory training - online training
+        if not self.convolutional:
+            if len(state.shape) == 1:
+                # (1, x)
+                state = torch.unsqueeze(state, 0)
+                next_state = torch.unsqueeze(next_state, 0)
+                action = torch.unsqueeze(action, 0)
+                reward = torch.unsqueeze(reward, 0)
+                done = (done,)
+        else:
+            if len(state.shape) == 2:  # Only height and width present
+                state = state.unsqueeze(0)  # Add channel dimension
+                next_state = next_state.unsqueeze(0)
+                done = (done,)
+                action = action.unsqueeze(0)
+                reward = reward.unsqueeze(0)
+
+            # Add batch dimension
+            state = torch.unsqueeze(state, 1)
+            next_state = torch.unsqueeze(next_state, 1)
+
+        # 1: predicted Q values with current state
+        pred = self.model(state)
+
+        target = pred.clone()
+
+        for idx in range(len(done)):
+            Q_new = reward[idx]
+            if not done[idx]:
+                Q_new = reward[idx] + self.gamma * torch.max(self.target_predictor(next_state[idx]))
+
+            target[idx][torch.argmax(action[idx]).item()] = Q_new
+
+        # 2: Q_new = r + y * max(next_predicted Q value) -> only do this if not done
+        # pred.clone()
+        # preds[argmax(action)] = Q_new
+        self.optimizer.zero_grad()
+        loss = self.criterion(target, pred)
+        loss.backward()
+
+        self.optimizer.step()
