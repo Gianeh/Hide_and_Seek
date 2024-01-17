@@ -332,7 +332,7 @@ class Agent_alpha_1:
         j = x // player.size
 
         view = player.view
-        objects = {'wall': '5', 'floor': '4', 'hider': '3', 'movable_wall': '2','seeker': '1', None: '0'}
+        objects = {'wall': '5', 'floor': '1', 'hider': '100', 'movable_wall': '10','seeker': '100', None: '0'}
         # ["wall", "floor", "hider", "movable_wall", None]
         view_vector = []
         for l in view:
