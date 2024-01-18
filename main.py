@@ -24,8 +24,8 @@ def main():
 
     # Instantiate Game and Agents
     game = Game(12,12,40)
-    hider = Agent_alpha_1('hider')
-    seeker = Agent_alpha_1('seeker')
+    hider = Agent_hivemind_0('hider')
+    seeker = Agent_hivemind_0('seeker')
 
 
     frames = 0
@@ -134,7 +134,6 @@ def main():
             if (hider.n_games % 30 == 0 or seeker.n_games % 30 == 0) and (hider.n_games != 0 and seeker.n_games != 0):
                 if hide : hider.clean_memory(duplicates=5)
                 if seek : seeker.clean_memory(duplicates=5)
-            
 
 
 if __name__ == "__main__":

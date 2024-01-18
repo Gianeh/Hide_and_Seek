@@ -4,6 +4,7 @@ from collections import deque
 import numpy as np
 from models import QTrainer, QTrainer_beta_1, QNet, ConvQNet
 import os
+import ast # to easily load memory
 
 # import time for probing purposes
 import time
@@ -510,7 +511,7 @@ class Agent_hivemind_0:
         self.init_memory() # reload all previous memories up to MAX_MEMORY
         self.replay_memory = []
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        self.brain = ConvQNet([[1, 3, 3, 1, 1], [3, 1, 7, 1, 0]], [36, 128, 6], self.name).to(self.device)
+        self.brain = ConvQNet([[1, 3, 3, 1, 1], [3, 1, 7, 1, 0]], [36, 128, 256, 128, 6], self.name).to(self.device)
         self.trainer = QTrainer(self.brain, LR, self.gamma, convolutional=True)
 
         if self.brain.load():
@@ -529,10 +530,10 @@ class Agent_hivemind_0:
                 lines = lines[-MAX_MEMORY:]
             for line in lines:
                 state, action, reward, next_state, gameover = line.split(";")
-                state = np.array(state[1:-1].split(","), dtype=np.float32)
+                state = np.array(ast.literal_eval(state), dtype=np.float32)
                 action = np.array(action[1:-1].split(","), dtype=np.float32)
                 reward = np.array(int(reward))
-                next_state = np.array(next_state[1:-1].split(","), dtype=np.float32)
+                next_state = np.array(ast.literal_eval(next_state), dtype=np.float32)
                 gameover = np.array(gameover == 'True')
                 self.memory.append((state, action, reward, next_state, gameover))
 
@@ -557,17 +558,17 @@ class Agent_hivemind_0:
             lines = lines[:size]
         for line in lines:
             state, action, reward, next_state, gameover = line.split(";")
-            state = np.array(state[1:-1].split(","), dtype=np.float32)
+            state = np.array(ast.literal_eval(state), dtype=np.float32)
             action = np.array(action[1:-1].split(","), dtype=np.float32)
             reward = np.array(int(reward))
-            next_state = np.array(next_state[1:-1].split(","), dtype=np.float32)
+            next_state = np.array(ast.literal_eval(next_state), dtype=np.float32)
             gameover = np.array(gameover == 'True')
             self.replay_memory.append((state, action, reward, next_state, gameover))
                 
     # hivemind agent is designed to acquire the matrix of the whole map
     def get_state(self, game, player):
         start = time.time()
-        objects = {'wall': '5', 'floor': '4', 'hider': '3', 'movable_wall': '2','seeker': '1'}
+        objects = {'wall': '5', 'floor': '1', 'hider': '100', 'movable_wall': '10','seeker': '100', None: '0'}
         # ["wall", "floor", "hider", "movable_wall", None]
         state = []
         for row in range(len(player.map)):
@@ -583,7 +584,7 @@ class Agent_hivemind_0:
         self.epsilon = self.randomness - self.n_games    # 80 is arbitrary
         final_action = [0,0,0,0,0,0]
         if random.randint(0, 200) < self.epsilon:   # 200 is arbitrary
-            action = random.randint(0, 4)
+            action = random.randint(0, 5)
             final_action[action] = 1
         else:
             state = np.array(state)
@@ -600,14 +601,14 @@ class Agent_hivemind_0:
     def remember(self, state, action, reward, next_state, gameover):
         self.memory.append((state, action, reward, next_state, gameover))
         # append to a certain file
-        '''
+        
         with open("./memory/" + self.name +".txt", "a") as f:
             f.write(str(state) + ";")
             f.write(str(action) + ";")
             f.write(str(reward) + ";")
             f.write(str(next_state) + ";")
             f.write(str(gameover) + "\n")
-        '''
+        
 
     def train_short_memory(self, state, action, reward, next_state, gameover):
         start = time.time()
