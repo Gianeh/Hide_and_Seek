@@ -162,7 +162,7 @@ class Game:
                 print("Seeker wins!")
                 print("Seeker seen: ", player.seen)
 
-            reward += player.seen
+            #reward += player.seen
             reward -= 1 if player.seen == 0 else 0
 
             if not valid_action:
@@ -181,7 +181,7 @@ class Game:
                 reward -= 100
                 print("Hider loses!")
             
-            reward -= other.seen
+            #reward -= other.seen
             reward += 1 if other.seen == 0 else 0
 
 

@@ -505,7 +505,7 @@ class Agent_hivemind_0:
         self.name = name
         self.n_games = 0
         self.epsilon = 0 # randomness
-        self.randomness = 200
+        self.randomness = 80
         self.gamma = 0.9 # discount rate
         self.memory = deque(maxlen=MAX_MEMORY) # automatic popleft()
         self.init_memory() # reload all previous memories up to MAX_MEMORY
@@ -568,7 +568,7 @@ class Agent_hivemind_0:
     # hivemind agent is designed to acquire the matrix of the whole map
     def get_state(self, game, player):
         start = time.time()
-        objects = {'wall': '5', 'floor': '1', 'hider': '100', 'movable_wall': '10','seeker': '100', None: '0'}
+        objects = {'wall': '5', 'floor': '1', 'hider': '100', 'movable_wall': '10','seeker': '-100', None: '0'}
         # ["wall", "floor", "hider", "movable_wall", None]
         state = []
         for row in range(len(player.map)):
@@ -581,7 +581,7 @@ class Agent_hivemind_0:
     def get_action(self, state):
         start = time.time()
         # tradeoff exploration / exploitation
-        self.epsilon = self.randomness - self.n_games    # 80 is arbitrary
+        self.epsilon = self.randomness - self.n_games
         final_action = [0,0,0,0,0,0]
         if random.randint(0, 200) < self.epsilon:   # 200 is arbitrary
             action = random.randint(0, 5)
