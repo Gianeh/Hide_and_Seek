@@ -17,6 +17,7 @@ LR = 0.001
 class Agent_alpha_0:
     def __init__(self, name='model'):
         self.name = name
+        self.agent_name = "alpha_0"
         self.n_games = 0
         self.epsilon = 0 # randomness
         self.randomness = 200
@@ -25,7 +26,7 @@ class Agent_alpha_0:
         self.init_memory() # reload all previous memeories up to MAX_MEMORY
         self.replay_memory = []
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        self.brain = QNet([79, 256, 512, 256, 5], self.name).to(self.device)
+        self.brain = QNet([79, 256, 512, 256, 5], self.agent_name, self.name).to(self.device)
         self.trainer = QTrainer(self.brain, LR, self.gamma)
 
         if self.brain.load():
@@ -33,10 +34,14 @@ class Agent_alpha_0:
         
     def init_memory(self):
         # check if memory file exists
-        if not os.path.exists("./memory/" + self.name +".txt"):
-            return
+        if not os.path.exists("./alpha_0/memory/" + self.name +".txt"):
+            if os.path.exists("./alpha_0/memory"):
+                return
+            else:
+                os.makedirs("./alpha_0/memory")
+                return
         # recall last lines of memory up to MAX_MEMORY
-        with open("./memory/" + self.name +".txt", "r") as f:
+        with open("./alpha_0/memory/" + self.name +".txt", "r") as f:
             lines = f.readlines()
             if len(lines) > MAX_MEMORY:
                 lines = lines[-MAX_MEMORY:]
@@ -50,7 +55,7 @@ class Agent_alpha_0:
                 self.memory.append((state, action, reward, next_state, gameover))
 
     def load_replay_memory(self, criterion="reward", size=BATCH_SIZE):
-        with open("./memory/" + self.name +".txt", "r") as f:
+        with open(".alpha_0/memory/" + self.name +".txt", "r") as f:
             if criterion == "abs_reward":
                 crit = lambda x: abs(int(x.split(";")[2]))
                 reverse = True
@@ -165,7 +170,7 @@ class Agent_alpha_0:
     def remember(self, state, action, reward, next_state, gameover):
         self.memory.append((state, action, reward, next_state, gameover))
         # append to a certain file
-        with open("./memory/" + self.name +".txt", "a") as f:
+        with open("./alpha_0/memory/" + self.name +".txt", "a") as f:
             f.write(str(state) + ";")
             f.write(str(action) + ";")
             f.write(str(reward) + ";")
@@ -233,7 +238,7 @@ class Agent_alpha_0:
     def clean_memory(self, duplicates=100):
         start = time.time()
         # clean identical lines if number is over
-        file_path = "./memory/" + self.name + ".txt"
+        file_path = "./alpha_0/memory/" + self.name + ".txt"
         with open(file_path, "r") as f:
             lines = f.readlines()
         count = 0
@@ -262,6 +267,7 @@ class Agent_alpha_0:
 class Agent_alpha_1:
     def __init__(self, name='model'):
         self.name = name
+        self.agent_name = "alpha_1"
         self.n_games = 0
         self.epsilon = 0 # randomness
         self.randomness = 80
@@ -270,7 +276,7 @@ class Agent_alpha_1:
         self.init_memory() # reload all previous memeories up to MAX_MEMORY
         self.replay_memory = []
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        self.brain = QNet([19, 128, 128, 6], self.name).to(self.device)
+        self.brain = QNet([19, 128, 128, 6], self.agent_name, self.name).to(self.device)
         self.trainer = QTrainer_beta_1(self.brain, LR, self.gamma)
 
         if self.brain.load():
@@ -280,10 +286,14 @@ class Agent_alpha_1:
         
     def init_memory(self):
         # check if memory file exists
-        if not os.path.exists("./memory/" + self.name +".txt"):
-            return
+        if not os.path.exists("./alpha_1/memory/" + self.name +".txt"):
+            if os.path.exists("./alpha_1/memory"):
+                return
+            else:
+                os.makedirs("./alpha_1/memory")
+                return
         # recall last lines of memory up to MAX_MEMORY
-        with open("./memory/" + self.name +".txt", "r") as f:
+        with open("./alpha_1/memory/" + self.name +".txt", "r") as f:
             lines = f.readlines()
             if len(lines) > MAX_MEMORY:
                 lines = lines[-MAX_MEMORY:]
@@ -297,7 +307,7 @@ class Agent_alpha_1:
                 self.memory.append((state, action, reward, next_state, gameover))
 
     def load_replay_memory(self, criterion="reward", size=BATCH_SIZE):
-        with open("./memory/" + self.name +".txt", "r") as f:
+        with open("./alpha_1/memory/" + self.name +".txt", "r") as f:
             if criterion == "abs_reward":
                 crit = lambda x: abs(int(x.split(";")[2]))
                 reverse = True
@@ -406,7 +416,7 @@ class Agent_alpha_1:
     def remember(self, state, action, reward, next_state, gameover):
         self.memory.append((state, action, reward, next_state, gameover))
         # append to a certain file
-        with open("./memory/" + self.name +".txt", "a") as f:
+        with open("./alpha_1/memory/" + self.name +".txt", "a") as f:
             f.write(str(state) + ";")
             f.write(str(action) + ";")
             f.write(str(reward) + ";")
@@ -474,7 +484,7 @@ class Agent_alpha_1:
     def clean_memory(self, duplicates=100):
         start = time.time()
         # clean identical lines if number is over
-        file_path = "./memory/" + self.name + ".txt"
+        file_path = "./alpha_1/memory/" + self.name + ".txt"
         with open(file_path, "r") as f:
             lines = f.readlines()
         count = 0
@@ -503,6 +513,7 @@ class Agent_alpha_1:
 class Agent_hivemind_0:
     def __init__(self, name='model'):
         self.name = name
+        self.agent_name = "hivemind_0"
         self.n_games = 0
         self.epsilon = 0 # randomness
         self.randomness = 80
@@ -511,7 +522,7 @@ class Agent_hivemind_0:
         self.init_memory() # reload all previous memories up to MAX_MEMORY
         self.replay_memory = []
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        self.brain = ConvQNet([[1, 3, 3, 1, 1], [3, 1, 7, 1, 0]], [36, 128, 256, 128, 6], self.name).to(self.device)
+        self.brain = ConvQNet([[1, 3, 3, 1, 1], [3, 1, 7, 1, 0]], [36, 128, 256, 128, 6], self.agent_name, self.name).to(self.device)
         self.trainer = QTrainer_beta_1(self.brain, LR, self.gamma, convolutional=True, update_steps=10000)
 
         if self.brain.load():
@@ -521,10 +532,14 @@ class Agent_hivemind_0:
         
     def init_memory(self):
         # check if memory file exists
-        if not os.path.exists("./memory/" + self.name +".txt"):
-            return
+        if not os.path.exists("./hivemind_0/memory/" + self.name +".txt"):
+            if os.path.exists("./hivemind_0/memory"):
+                return
+            else:
+                os.makedirs("./hivemind_0/memory")
+                return
         # recall last lines of memory up to MAX_MEMORY
-        with open("./memory/" + self.name +".txt", "r") as f:
+        with open("./hivemind_0/memory/" + self.name +".txt", "r") as f:
             lines = f.readlines()
             if len(lines) > MAX_MEMORY:
                 lines = lines[-MAX_MEMORY:]
@@ -538,7 +553,7 @@ class Agent_hivemind_0:
                 self.memory.append((state, action, reward, next_state, gameover))
 
     def load_replay_memory(self, criterion="reward", size=BATCH_SIZE):
-        with open("./memory/" + self.name +".txt", "r") as f:
+        with open("./hivemind_0/memory/" + self.name +".txt", "r") as f:
             if criterion == "abs_reward":
                 crit = lambda x: abs(int(x.split(";")[2]))
                 reverse = True
@@ -602,14 +617,13 @@ class Agent_hivemind_0:
         self.memory.append((state, action, reward, next_state, gameover))
         # append to a certain file
         
-        with open("./memory/" + self.name +".txt", "a") as f:
+        with open("./hivemind_0/memory/" + self.name +".txt", "a") as f:
             f.write(str(state) + ";")
             f.write(str(action) + ";")
             f.write(str(reward) + ";")
             f.write(str(next_state) + ";")
             f.write(str(gameover) + "\n")
         
-
     def train_short_memory(self, state, action, reward, next_state, gameover):
         start = time.time()
         state = np.array(state)
@@ -671,7 +685,7 @@ class Agent_hivemind_0:
     def clean_memory(self, duplicates=100):
         start = time.time()
         # clean identical lines if number is over
-        file_path = "./memory/" + self.name + ".txt"
+        file_path = "./hivemind_0/memory/" + self.name + ".txt"
         with open(file_path, "r") as f:
             lines = f.readlines()
         count = 0

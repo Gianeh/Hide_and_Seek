@@ -24,8 +24,8 @@ def main():
 
     # Instantiate Game and Agents
     game = Game(12,12,40)
-    hider = Agent_hivemind_0('hider')
-    seeker = Agent_hivemind_0('seeker')
+    hider = Agent_alpha_1('hider')
+    seeker = Agent_alpha_1('seeker')
 
 
     frames = 0

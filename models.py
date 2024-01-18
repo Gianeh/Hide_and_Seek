@@ -7,9 +7,10 @@ import torch.nn.functional as F
 import os
 
 class QNet(nn.Module):
-    def __init__(self, layers, name='model'):
+    def __init__(self, layers, agent_name, name='model'):
         super().__init__()
 
+        self.agent_name = agent_name
         self.name = name
         self.layers = nn.ModuleList()
         for i in range(len(layers) - 1):
@@ -22,7 +23,7 @@ class QNet(nn.Module):
         return x
 
     def save(self):
-        model_folder_path = './model'
+        model_folder_path = os.path.join('./'+self.agent_name, 'model')
         if not os.path.exists(model_folder_path):
             os.makedirs(model_folder_path)
 
@@ -30,7 +31,7 @@ class QNet(nn.Module):
         torch.save(self.state_dict(), path_name)
 
     def load(self):
-        model_folder_path = './model'
+        model_folder_path = os.path.join('./'+self.agent_name, 'model')
         # check if model file in folder model exists
         path_name = os.path.join(model_folder_path, self.name)
         if not os.path.exists(path_name):
@@ -41,9 +42,9 @@ class QNet(nn.Module):
 
 class ConvQNet(nn.Module):
     # conv_layers = [[n_in_channels, n_out_channels, kernel_size, stride, padding], [n_in_channels, n_out_channels, kernel_size, stride, padding], ...]
-    def __init__(self, conv_layers, mlp_layers, name='model'):
+    def __init__(self, conv_layers, mlp_layers, agent_name, name='model'):
         super().__init__()
-
+        self.agent_name = agent_name
         self.name = name
         self.conv_layers = nn.ModuleList()
         for layer in conv_layers:
@@ -71,7 +72,7 @@ class ConvQNet(nn.Module):
         return x
     
     def save(self):
-        model_folder_path = './model'
+        model_folder_path = os.path.join('./'+self.agent_name, 'model')
         if not os.path.exists(model_folder_path):
             os.makedirs(model_folder_path)
 
@@ -79,7 +80,7 @@ class ConvQNet(nn.Module):
         torch.save(self.state_dict(), path_name)
 
     def load(self):
-        model_folder_path = './model'
+        model_folder_path = os.path.join('./'+self.agent_name, 'model')
         # check if model file in folder model exists
         path_name = os.path.join(model_folder_path, self.name)
         if not os.path.exists(path_name):
