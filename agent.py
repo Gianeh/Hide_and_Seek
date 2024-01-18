@@ -512,7 +512,7 @@ class Agent_hivemind_0:
         self.replay_memory = []
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.brain = ConvQNet([[1, 3, 3, 1, 1], [3, 1, 7, 1, 0]], [36, 128, 256, 128, 6], self.name).to(self.device)
-        self.trainer = QTrainer(self.brain, LR, self.gamma, convolutional=True)
+        self.trainer = QTrainer_beta_1(self.brain, LR, self.gamma, convolutional=True, update_steps=10000)
 
         if self.brain.load():
             print("Model loaded")

@@ -60,13 +60,13 @@ class ConvQNet(nn.Module):
             x = x.unsqueeze(0)  # Add channel dimension
 
         for layer in self.conv_layers:
-            x = F.relu(layer(x))
+            x = F.leaky_relu(layer(x))
 
         # flatten
         x = x.view(x.size(0), -1)
         
         for layer in self.mlp_layers[:-1]:
-            x = F.relu(layer(x))
+            x = F.leaky_relu(layer(x))
         x = self.mlp_layers[-1](x)
         return x
     

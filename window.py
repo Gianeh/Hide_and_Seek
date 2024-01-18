@@ -80,8 +80,9 @@ class Game:
 
     def update(self):
         self.draw_map()
-        self.draw_players()
         self.draw_players_view()
+        self.draw_players()
+        
 
     def draw_map(self):
         # blit all the map to the screen with a certain border width
