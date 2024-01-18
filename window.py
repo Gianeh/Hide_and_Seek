@@ -2,6 +2,7 @@ import pygame as pg
 from objects import Cell, Floor, Wall, MovableWall, Hider, Seeker
 import numpy as np
 import random
+import math
 
 WHITE = (255, 255, 255)
 BLACK = (0, 0, 0)
@@ -48,13 +49,14 @@ class Game:
             for col in range(self.cols):
                 x = col * self.size
                 y = row * self.size
-                
+                '''
                 if col % 5 == 0 and row % 7 == 0:
                     map[row].append(MovableWall(x, y, self.size))
                 else:
                     map[row].append(Floor(x, y, self.size))
+                '''
                 
-                #map[row].append(Floor(x, y, self.size))
+                map[row].append(Floor(x, y, self.size))
         return map
 
     def init_players(self):
@@ -147,46 +149,116 @@ class Game:
 
         return valid
 
-    def reward(self, player, valid_action, wintime):
+    def reward(self, player, valid_action, wintime, criterion='default'):
         # look a second time to update the view in order to calculate reward and seen variable coherently
         player.look()
         reward = 0
+        if criterion == 'default':
+            if player.obj_type == 'seeker':
+                # let seeker see
+                player.see()
 
-        if player.obj_type == 'seeker':
-            # let seeker see
-            player.see()
+                # seeker wins!
+                if player.seen >= wintime:
+                    reward += 100
+                    print("Seeker wins!")
+                    print("Seeker seen: ", player.seen)
 
-            # seeker wins!
-            if player.seen >= wintime:
-                reward += 100
-                print("Seeker wins!")
-                print("Seeker seen: ", player.seen)
+                #reward += player.seen
+                reward -= 1 if player.seen == 0 else 0
 
-            #reward += player.seen
-            reward -= 1 if player.seen == 0 else 0
-
-            if not valid_action:
-                reward -= 1
+                if not valid_action:
+                    reward -= 1
         
-        else: # hider
-            # let hider see
-            player.see()    # theorically is no longer needed
+            else: # hider
+                # let hider see
+                player.see()    # theorically is no longer needed
 
+                other = self.players[1] if player == self.players[0] else self.players[0]
+                # let seeker see
+                other.see()
+
+                # hider loses!
+                if other.seen >= wintime:
+                    reward -= 100
+                    print("Hider loses!")
+                
+                #reward -= other.seen
+                reward += 1 if other.seen == 0 else 0
+
+
+                if not valid_action:
+                    reward -= 1
+
+        elif criterion == 'explore':
+
+            if player.obj_type == 'seeker':
+                # let seeker see
+                player.see()
+
+                # seeker wins!
+                if player.seen >= wintime:
+                    reward += 100
+                    print("Seeker wins!")
+                    print("Seeker seen: ", player.seen)
+                
+                if not valid_action:
+                    reward -= 1
+
+            else: # hider
+                # let hider see
+                player.see()
+
+                other = self.players[1] if player == self.players[0] else self.players[0]
+                # let seeker see
+                other.see()
+
+                if other.seen >= wintime:
+                    reward -= 100
+                    print("Hider loses!")
+                
+                if not valid_action:
+                    reward -= 1
+
+        elif criterion == 'distance':
             other = self.players[1] if player == self.players[0] else self.players[0]
-            # let seeker see
-            other.see()
+            # i,j of both
+            i = player.y // self.size
+            j = player.x // self.size
+            i_other = other.y // self.size
+            j_other = other.x // self.size
+            distance = math.sqrt((i-i_other)**2 + (j-j_other)**2)
 
-            # hider loses!
-            if other.seen >= wintime:
-                reward -= 100
-                print("Hider loses!")
+            if player.obj_type == 'seeker':
+                # let seeker see
+                player.see()
+
+                # seeker wins!
+                if player.seen >= wintime:
+                    reward += 100
+                    print("Seeker wins!")
+                    print("Seeker seen: ", player.seen)
+                
+                reward += 1/distance if distance != 0 else 0
+
+                if not valid_action:
+                    reward -= 1
             
-            #reward -= other.seen
-            reward += 1 if other.seen == 0 else 0
+            else: # hider
 
+                # let hider see
+                player.see()
+                # let seeker see
+                other.see()
 
-            if not valid_action:
-                reward -= 1
+                if other.seen >= wintime:
+                    reward -= 100
+                    print("Hider loses!")
+                
+                reward -= 1/distance if distance != 0 else 0
+
+                if not valid_action:
+                    reward -= 1
 
         # update player's reward just for log purposes
         player.reward += reward

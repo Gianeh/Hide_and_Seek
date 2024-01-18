@@ -25,7 +25,7 @@ def main():
     # Instantiate Game and Agents
     game = Game(12,12,40)
     hider = Agent_alpha_1('hider')
-    seeker = Agent_alpha_1('seeker')
+    seeker = Agent_alpha_0('seeker')
 
 
     frames = 0
@@ -73,7 +73,7 @@ def main():
             hider_state = hider.get_state(game, game.players[0])
             hider_action = hider.get_action(hider_state)
             valid_action = game.control_player(game.players[0], hider_action)
-            hider_reward = game.reward(game.players[0], valid_action, WINTIME)
+            hider_reward = game.reward(game.players[0], valid_action, WINTIME, criterion="explore")
             hider_new_state = hider.get_state(game, game.players[0])
             hider.train_short_memory(hider_state, hider_action, hider_reward, hider_new_state, gameover)
             hider.remember(hider_state, hider_action, hider_reward, hider_new_state, gameover)
@@ -83,7 +83,7 @@ def main():
             seeker_state = seeker.get_state(game, game.players[1])
             seeker_action = seeker.get_action(seeker_state)
             valid_action = game.control_player(game.players[1], seeker_action)
-            seeker_reward = game.reward(game.players[1], valid_action, WINTIME)
+            seeker_reward = game.reward(game.players[1], valid_action, WINTIME, criterion="explore")
             seeker_new_state = seeker.get_state(game, game.players[1])
             seeker.train_short_memory(seeker_state, seeker_action, seeker_reward, seeker_new_state, gameover)
             seeker.remember(seeker_state, seeker_action, seeker_reward, seeker_new_state, gameover)
@@ -130,10 +130,11 @@ def main():
             if (hider.n_games % 10 == 0 or seeker.n_games % 10 == 0) and (hider.n_games != 0 and seeker.n_games != 0):
                 if hide : hider.train_replay("neg_reward")
                 if seek : seeker.train_replay("neg_reward")
-            
+            '''
             if (hider.n_games % 30 == 0 or seeker.n_games % 30 == 0) and (hider.n_games != 0 and seeker.n_games != 0):
                 if hide : hider.clean_memory(duplicates=5)
                 if seek : seeker.clean_memory(duplicates=5)
+                '''
 
 
 if __name__ == "__main__":

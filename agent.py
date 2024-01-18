@@ -13,6 +13,7 @@ MAX_MEMORY = 10000
 BATCH_SIZE = 1000
 LR = 0.001
 
+
 # Agent Alpha 0 is the first complete prototype, every piece work but learning seems capped by input encoding or other unknown factors
 class Agent_alpha_0:
     def __init__(self, name='model'):
@@ -49,24 +50,24 @@ class Agent_alpha_0:
                 state, action, reward, next_state, gameover = line.split(";")
                 state = np.array(state[1:-1].split(","), dtype=np.float32)
                 action = np.array(action[1:-1].split(","), dtype=np.float32)
-                reward = np.array(int(reward))
+                reward = np.array(float(reward), dtype=np.float32)
                 next_state = np.array(next_state[1:-1].split(","), dtype=np.float32)
                 gameover = np.array(gameover == 'True')
                 self.memory.append((state, action, reward, next_state, gameover))
 
     def load_replay_memory(self, criterion="reward", size=BATCH_SIZE):
-        with open(".alpha_0/memory/" + self.name +".txt", "r") as f:
+        with open("./alpha_0/memory/" + self.name +".txt", "r") as f:
             if criterion == "abs_reward":
-                crit = lambda x: abs(int(x.split(";")[2]))
+                crit = lambda x: abs(float(x.split(";")[2]))
                 reverse = True
             elif criterion == "reward":
-                crit = lambda x: int(x.split(";")[2])
+                crit = lambda x: float(x.split(";")[2])
                 reverse = True
             elif criterion == "neg_reward":
-                crit = lambda x: int(x.split(";")[2])
+                crit = lambda x: float(x.split(";")[2])
                 reverse = False
             elif criterion == "lowest_abs_reward":
-                crit = lambda x: abs(int(x.split(";")[2]))
+                crit = lambda x: abs(float(x.split(";")[2]))
                 reverse = False
 
             lines = sorted(f.readlines(), key=crit, reverse=reverse)
@@ -77,7 +78,7 @@ class Agent_alpha_0:
             state, action, reward, next_state, gameover = line.split(";")
             state = np.array(state[1:-1].split(","), dtype=np.float32)
             action = np.array(action[1:-1].split(","), dtype=np.float32)
-            reward = np.array(int(reward))
+            reward = np.array(float(reward), dtype=np.float32)
             next_state = np.array(next_state[1:-1].split(","), dtype=np.float32)
             gameover = np.array(gameover == 'True')
             self.replay_memory.append((state, action, reward, next_state, gameover))
@@ -301,7 +302,7 @@ class Agent_alpha_1:
                 state, action, reward, next_state, gameover = line.split(";")
                 state = np.array(state[1:-1].split(","), dtype=np.float32)
                 action = np.array(action[1:-1].split(","), dtype=np.float32)
-                reward = np.array(int(reward))
+                reward = np.array(float(reward), dtype=np.float32)
                 next_state = np.array(next_state[1:-1].split(","), dtype=np.float32)
                 gameover = np.array(gameover == 'True')
                 self.memory.append((state, action, reward, next_state, gameover))
@@ -309,16 +310,16 @@ class Agent_alpha_1:
     def load_replay_memory(self, criterion="reward", size=BATCH_SIZE):
         with open("./alpha_1/memory/" + self.name +".txt", "r") as f:
             if criterion == "abs_reward":
-                crit = lambda x: abs(int(x.split(";")[2]))
+                crit = lambda x: abs(float(x.split(";")[2]))
                 reverse = True
             elif criterion == "reward":
-                crit = lambda x: int(x.split(";")[2])
+                crit = lambda x: float(x.split(";")[2])
                 reverse = True
             elif criterion == "neg_reward":
-                crit = lambda x: int(x.split(";")[2])
+                crit = lambda x: float(x.split(";")[2])
                 reverse = False
             elif criterion == "lowest_abs_reward":
-                crit = lambda x: abs(int(x.split(";")[2]))
+                crit = lambda x: abs(float(x.split(";")[2]))
                 reverse = False
 
             lines = sorted(f.readlines(), key=crit, reverse=reverse)
@@ -329,7 +330,7 @@ class Agent_alpha_1:
             state, action, reward, next_state, gameover = line.split(";")
             state = np.array(state[1:-1].split(","), dtype=np.float32)
             action = np.array(action[1:-1].split(","), dtype=np.float32)
-            reward = np.array(int(reward))
+            reward = np.array(float(reward), dtype=np.float32)
             next_state = np.array(next_state[1:-1].split(","), dtype=np.float32)
             gameover = np.array(gameover == 'True')
             self.replay_memory.append((state, action, reward, next_state, gameover))
@@ -508,7 +509,7 @@ class Agent_alpha_1:
         print("#" * 50)
         print(f"\033[92mclean_memory for {self.name}, erased {erased} lines in: ", end - start, " seconds\033[0m")
         print("#" * 50)
-    
+
 
 class Agent_hivemind_0:
     def __init__(self, name='model'):
@@ -522,7 +523,7 @@ class Agent_hivemind_0:
         self.init_memory() # reload all previous memories up to MAX_MEMORY
         self.replay_memory = []
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        self.brain = ConvQNet([[1, 3, 3, 1, 1], [3, 1, 7, 1, 0]], [36, 128, 256, 128, 6], self.agent_name, self.name).to(self.device)
+        self.brain = ConvQNet([[1, 3, 3, 1, 1], [3, 1, 7, 1, 0]], [36, 128, 128, 6], self.agent_name, self.name).to(self.device)
         self.trainer = QTrainer_beta_1(self.brain, LR, self.gamma, convolutional=True, update_steps=10000)
 
         if self.brain.load():
@@ -547,7 +548,7 @@ class Agent_hivemind_0:
                 state, action, reward, next_state, gameover = line.split(";")
                 state = np.array(ast.literal_eval(state), dtype=np.float32)
                 action = np.array(action[1:-1].split(","), dtype=np.float32)
-                reward = np.array(int(reward))
+                reward = np.array(float(reward), dtype=np.float32)
                 next_state = np.array(ast.literal_eval(next_state), dtype=np.float32)
                 gameover = np.array(gameover == 'True')
                 self.memory.append((state, action, reward, next_state, gameover))
@@ -555,16 +556,16 @@ class Agent_hivemind_0:
     def load_replay_memory(self, criterion="reward", size=BATCH_SIZE):
         with open("./hivemind_0/memory/" + self.name +".txt", "r") as f:
             if criterion == "abs_reward":
-                crit = lambda x: abs(int(x.split(";")[2]))
+                crit = lambda x: abs(float(x.split(";")[2]))
                 reverse = True
             elif criterion == "reward":
-                crit = lambda x: int(x.split(";")[2])
+                crit = lambda x: float(x.split(";")[2])
                 reverse = True
             elif criterion == "neg_reward":
-                crit = lambda x: int(x.split(";")[2])
+                crit = lambda x: float(x.split(";")[2])
                 reverse = False
             elif criterion == "lowest_abs_reward":
-                crit = lambda x: abs(int(x.split(";")[2]))
+                crit = lambda x: abs(float(x.split(";")[2]))
                 reverse = False
 
             lines = sorted(f.readlines(), key=crit, reverse=reverse)
@@ -575,7 +576,7 @@ class Agent_hivemind_0:
             state, action, reward, next_state, gameover = line.split(";")
             state = np.array(ast.literal_eval(state), dtype=np.float32)
             action = np.array(action[1:-1].split(","), dtype=np.float32)
-            reward = np.array(int(reward))
+            reward = np.array(float(reward), dtype=np.float32)
             next_state = np.array(ast.literal_eval(next_state), dtype=np.float32)
             gameover = np.array(gameover == 'True')
             self.replay_memory.append((state, action, reward, next_state, gameover))
