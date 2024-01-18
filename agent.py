@@ -510,7 +510,272 @@ class Agent_alpha_1:
         print(f"\033[92mclean_memory for {self.name}, erased {erased} lines in: ", end - start, " seconds\033[0m")
         print("#" * 50)
 
+# Agent Alpha 2, comes to life after considerations made on hivemind prototypes, what about mimicking other examples of the same game? the state space is completely changed again in advantage of a coordinate/distance representation
+class Agent_alpha_2:
+    def __init__(self, name='model'):
+        self.name = name
+        self.agent_name = "alpha_2"
+        self.n_games = 0
+        self.epsilon = 0 # randomness
+        self.randomness = 80
+        self.gamma = 0.9 # discount rate
+        self.memory = deque(maxlen=MAX_MEMORY) # automatic popleft()
+        self.init_memory() # reload all previous memeories up to MAX_MEMORY
+        self.replay_memory = []
+        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        self.brain = QNet([21, 256, 36, 6], self.agent_name, self.name).to(self.device)
+        self.trainer = QTrainer_beta_1(self.brain, LR, self.gamma)
 
+        if self.brain.load():
+            print("Model loaded")
+
+        print(f"AGENT ALPHA 2: training {self.name} with {self.device} device")
+        
+    def init_memory(self):
+        # check if memory file exists
+        if not os.path.exists("./alpha_2/memory/" + self.name +".txt"):
+            if os.path.exists("./alpha_2/memory"):
+                return
+            else:
+                os.makedirs("./alpha_2/memory")
+                return
+        # recall last lines of memory up to MAX_MEMORY
+        with open("./alpha_2/memory/" + self.name +".txt", "r") as f:
+            lines = f.readlines()
+            if len(lines) > MAX_MEMORY:
+                lines = lines[-MAX_MEMORY:]
+            for line in lines:
+                state, action, reward, next_state, gameover = line.split(";")
+                state = np.array(state[1:-1].split(","), dtype=np.float32)
+                action = np.array(action[1:-1].split(","), dtype=np.float32)
+                reward = np.array(float(reward), dtype=np.float32)
+                next_state = np.array(next_state[1:-1].split(","), dtype=np.float32)
+                gameover = np.array(gameover == 'True')
+                self.memory.append((state, action, reward, next_state, gameover))
+
+    def load_replay_memory(self, criterion="reward", size=BATCH_SIZE):
+        with open("./alpha_2/memory/" + self.name +".txt", "r") as f:
+            if criterion == "abs_reward":
+                crit = lambda x: abs(float(x.split(";")[2]))
+                reverse = True
+            elif criterion == "reward":
+                crit = lambda x: float(x.split(";")[2])
+                reverse = True
+            elif criterion == "neg_reward":
+                crit = lambda x: float(x.split(";")[2])
+                reverse = False
+            elif criterion == "lowest_abs_reward":
+                crit = lambda x: abs(float(x.split(";")[2]))
+                reverse = False
+
+            lines = sorted(f.readlines(), key=crit, reverse=reverse)
+
+        if len(lines) > size:
+            lines = lines[:size]
+        for line in lines:
+            state, action, reward, next_state, gameover = line.split(";")
+            state = np.array(state[1:-1].split(","), dtype=np.float32)
+            action = np.array(action[1:-1].split(","), dtype=np.float32)
+            reward = np.array(float(reward), dtype=np.float32)
+            next_state = np.array(next_state[1:-1].split(","), dtype=np.float32)
+            gameover = np.array(gameover == 'True')
+            self.replay_memory.append((state, action, reward, next_state, gameover))
+                
+    # difference with alpha 0, the state is now encoded in a much simpler way
+    def get_state(self, game, player):
+        start = time.time()
+        x = player.x
+        y = player.y
+        i = y // player.size
+        j = x // player.size
+        other_player = game.players[0] if player.obj_type == 'seeker' else game.players[1]
+        other_player_i = other_player.y // other_player.size
+        other_player_j = other_player.x // other_player.size
+        distance = np.sqrt((other_player_i - i)**2 + (other_player_j - j)**2)
+        direction = player.direction
+
+        if direction == 'u':
+            direction = 0
+        elif direction == 'd':
+            direction = 1
+        elif direction == 'l':
+            direction = 2
+        elif direction == 'r':
+            direction = 3
+
+        objects = {'wall': '5', 'floor': '1', 'hider': '100', 'movable_wall': '10','seeker': '100', None: '0'}
+        view = player.view
+        view_vector = []
+        for l in view:
+            for c in l:
+                if c is None:
+                    view_vector.append(int(objects[c]))
+                else:
+                    view_vector.append(int(objects[c.obj_type])/100)
+
+        neighbourhood = [] # left back right
+
+        if player.direction == 'u':
+            left = player.map[i][j-1].obj_type if j-1 >= 0 else None
+            back = player.map[i+1][j].obj_type if i+1 < game.rows else None
+            right = player.map[i][j+1].obj_type if j+1 < game.cols else None
+
+        elif player.direction == 'd':
+            left = player.map[i][j+1].obj_type if j+1 < game.cols else None
+            back = player.map[i-1][j].obj_type if i-1 >= 0 else None
+            right = player.map[i][j-1].obj_type if j-1 >= 0 else None
+
+        elif player.direction == 'l':
+            left = player.map[i+1][j].obj_type if i+1 < game.rows else None
+            back = player.map[i][j+1].obj_type if j+1 < game.cols else None
+            right = player.map[i-1][j].obj_type if i-1 >= 0 else None
+
+        elif player.direction == 'r':
+            left = player.map[i-1][j].obj_type if i-1 >= 0 else None
+            back = player.map[i][j-1].obj_type if j-1 >= 0 else None
+            right = player.map[i+1][j].obj_type if i+1 < game.rows else None
+
+        for n in objects[left]:
+            neighbourhood.append(int(n)/100)
+        for n in objects[back]:
+            neighbourhood.append(int(n)/100)
+        for n in objects[right]:
+            neighbourhood.append(int(n)/100)
+        
+        # normalize everything
+        i = i / game.rows
+        j = j / game.cols
+        distance = distance / (game.rows + game.cols)
+        other_player_i = other_player_i / game.rows
+        other_player_j = other_player_j / game.cols
+
+
+            
+
+        state = [i,j] + view_vector + neighbourhood + [distance, direction] + [other_player_i, other_player_j]
+
+        end = time.time()
+        #print("get_state: ", end - start)
+
+        return state
+
+    def get_action(self, state):
+        start = time.time()
+        # tradeoff exploration / exploitation
+        self.epsilon = self.randomness - self.n_games//3    # 80 is arbitrary --> //3 means we explore much more time with constant randomness probability!!
+        final_action = [0,0,0,0,0,0]
+        if random.randint(0, 200) < self.epsilon:   # 200 is arbitrary
+            action = random.randint(0, 5)
+            final_action[action] = 1
+        else:
+            state = np.array(state)
+            current_state = torch.tensor(state, dtype=torch.float).to(self.device)
+            prediction = self.brain(current_state)
+            action = torch.argmax(prediction).item()
+            final_action[action] = 1
+        
+        end = time.time()
+        #print("get_action: ", end - start)
+
+        return final_action
+
+    def remember(self, state, action, reward, next_state, gameover):
+        self.memory.append((state, action, reward, next_state, gameover))
+        # append to a certain file
+        with open("./alpha_2/memory/" + self.name +".txt", "a") as f:
+            f.write(str(state) + ";")
+            f.write(str(action) + ";")
+            f.write(str(reward) + ";")
+            f.write(str(next_state) + ";")
+            f.write(str(gameover) + "\n")
+
+    def train_short_memory(self, state, action, reward, next_state, gameover):
+        start = time.time()
+        state = np.array(state)
+        next_state = np.array(next_state)
+        self.trainer.train_step(state, action, reward, next_state, gameover)
+        end = time.time()
+        #print("train_short_memory: ", end - start)
+
+    def train_long_memory(self):
+        start = time.time()
+        if len(self.memory) > BATCH_SIZE:
+            batch_sample = random.sample(self.memory, BATCH_SIZE)
+            ''' Loss of the exploration phase in the long run
+            batch_sample = []
+            for i in range(len(self.memory)-1, len(self.memory) - 1 - BATCH_SIZE, -1):
+                batch_sample.append(self.memory[i])
+            '''
+        else:
+            batch_sample = self.memory
+
+        states, actions, rewards, next_states, gameovers = zip(*batch_sample)
+
+        # convert to numpy arrays
+        states = np.array(states)
+        actions = np.array(actions)
+        rewards = np.array(rewards)
+        next_states = np.array(next_states)
+        gameovers = np.array(gameovers)
+
+        self.trainer.train_step(states, actions, rewards, next_states, gameovers)
+
+        self.brain.save()
+        end = time.time()
+        if self.name == "seeker": print(f"\033[94mtraning seeker's long memory took: {end - start} seconds\033[0m")
+        else: print(f"\033[92mtraning hider's long memory took: {end - start} seconds\033[0m")
+
+    def train_replay(self, criterion="reward", size=BATCH_SIZE):
+        start = time.time()
+
+        self.load_replay_memory(criterion, size)
+
+        states, actions, rewards, next_states, gameovers = zip(*self.replay_memory)
+
+        # convert to numpy arrays
+        states = np.array(states)
+        actions = np.array(actions)
+        rewards = np.array(rewards)
+        next_states = np.array(next_states)
+        gameovers = np.array(gameovers)
+
+        self.trainer.train_step(states, actions, rewards, next_states, gameovers)
+
+        end = time.time()
+        print("+"*50)
+        print(f"\033[96mtrain_replay with {criterion} criterion in: {end - start} seconds\033[0m")
+        print("+"*50)
+        self.replay_memory = []
+
+    def clean_memory(self, duplicates=100):
+        start = time.time()
+        # clean identical lines if number is over
+        file_path = "./alpha_2/memory/" + self.name + ".txt"
+        with open(file_path, "r") as f:
+            lines = f.readlines()
+        count = 0
+        erased = 0
+        i = 0
+        while i < len(lines) - 1:
+            if lines[i] == lines[i + 1]:
+                count += 1
+                if count == duplicates:
+                    lines = lines[:i - duplicates + 2] + lines[i + 1:]
+                    count = 0
+                    erased += duplicates
+            else:
+                count = 0
+            i += 1
+
+        with open(file_path, "w") as f:
+            f.writelines(lines)
+
+        end = time.time()
+        print("#" * 50)
+        print(f"\033[92mclean_memory for {self.name}, erased {erased} lines in: ", end - start, " seconds\033[0m")
+        print("#" * 50)
+
+# Hivemind series, as the name suggests, is meant to be able to predict next action taking into account the whole map
 class Agent_hivemind_0:
     def __init__(self, name='model'):
         self.name = name

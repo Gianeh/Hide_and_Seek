@@ -1,7 +1,7 @@
 # Hide and Seek in a grid!
 import pygame as pg
 from window import Game
-from agent import Agent_alpha_0, Agent_alpha_1, Agent_hivemind_0
+from agent import Agent_alpha_0, Agent_alpha_1, Agent_alpha_2, Agent_hivemind_0
 import sys
 import argparse
 
@@ -24,8 +24,8 @@ def main():
 
     # Instantiate Game and Agents
     game = Game(12,12,40)
-    hider = Agent_alpha_1('hider')
-    seeker = Agent_alpha_0('seeker')
+    hider = Agent_alpha_2('hider')
+    seeker = Agent_alpha_2('seeker')
 
 
     frames = 0
