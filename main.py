@@ -1,6 +1,6 @@
 # Hide and Seek in a grid!
 import pygame as pg
-from window import Game
+from game import Game
 from agent import Agent_alpha_0, Agent_alpha_1, Agent_alpha_2, Agent_hivemind_0
 import sys
 import argparse

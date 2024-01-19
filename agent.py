@@ -9,6 +9,7 @@ import ast # to easily load memory
 # import time for probing purposes
 import time
 
+#Default parameters for all models
 MAX_MEMORY = 10000
 BATCH_SIZE = 1000
 LR = 0.001
@@ -16,9 +17,13 @@ LR = 0.001
 
 # Agent Alpha 0 is the first complete prototype, every piece work but learning seems capped by input encoding or other unknown factors
 class Agent_alpha_0:
-    def __init__(self, name='model'):
-        self.name = name
+    def __init__(self, name='model', Qtrainer=QTrainer, lr = LR, batch_size = BATCH_SIZE, max_memory = MAX_MEMORY):
         self.agent_name = "alpha_0"
+        self.name = name
+        self.Qtrainer = Qtrainer
+        self.lr = lr
+        self.batch_size = batch_size
+        self.max_memory = max_memory
         self.n_games = 0
         self.epsilon = 0 # randomness
         self.randomness = 200
@@ -28,10 +33,11 @@ class Agent_alpha_0:
         self.replay_memory = []
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.brain = QNet([79, 256, 512, 256, 5], self.agent_name, self.name).to(self.device)
-        self.trainer = QTrainer(self.brain, LR, self.gamma)
+        self.trainer = self.Qtrainer(self.brain, self.lr, self.gamma)
 
         if self.brain.load():
             print("Model loaded")
+
         
     def init_memory(self):
         # check if memory file exists
@@ -55,7 +61,7 @@ class Agent_alpha_0:
                 gameover = np.array(gameover == 'True')
                 self.memory.append((state, action, reward, next_state, gameover))
 
-    def load_replay_memory(self, criterion="reward", size=BATCH_SIZE):
+    def load_replay_memory(self, criterion="reward"):
         with open("./alpha_0/memory/" + self.name +".txt", "r") as f:
             if criterion == "abs_reward":
                 crit = lambda x: abs(float(x.split(";")[2]))
@@ -72,8 +78,8 @@ class Agent_alpha_0:
 
             lines = sorted(f.readlines(), key=crit, reverse=reverse)
 
-        if len(lines) > size:
-            lines = lines[:size]
+        if len(lines) > self.batch_size:
+            lines = lines[:self.batch_size]
         for line in lines:
             state, action, reward, next_state, gameover = line.split(";")
             state = np.array(state[1:-1].split(","), dtype=np.float32)
@@ -188,8 +194,8 @@ class Agent_alpha_0:
 
     def train_long_memory(self):
         start = time.time()
-        if len(self.memory) > BATCH_SIZE:
-            batch_sample = random.sample(self.memory, BATCH_SIZE)
+        if len(self.memory) > self.batch_size:
+            batch_sample = random.sample(self.memory, self.batch_size)
             ''' Loss of the exploration phase in the long run
             batch_sample = []
             for i in range(len(self.memory)-1, len(self.memory) - 1 - BATCH_SIZE, -1):
@@ -214,10 +220,10 @@ class Agent_alpha_0:
         if self.name == "seeker": print(f"\033[94mtraning seeker's long memory took: {end - start} seconds\033[0m")
         else: print(f"\033[92mtraning hider's long memory took: {end - start} seconds\033[0m")
 
-    def train_replay(self, criterion="reward", size=BATCH_SIZE):
+    def train_replay(self, criterion="reward"):
         start = time.time()
 
-        self.load_replay_memory(criterion, size)
+        self.load_replay_memory(criterion)
 
         states, actions, rewards, next_states, gameovers = zip(*self.replay_memory)
 
@@ -266,19 +272,23 @@ class Agent_alpha_0:
     
 # Agent Alpha 1 is the second complete prototype, the aim is to improve the input encoding narrowing the possible existing problems with alpha 0
 class Agent_alpha_1:
-    def __init__(self, name='model'):
-        self.name = name
+    def __init__(self, name='model', Qtrainer=QTrainer, lr = LR, batch_size = BATCH_SIZE, max_memory = MAX_MEMORY):
         self.agent_name = "alpha_1"
+        self.name = name
+        self.Qtrainer = Qtrainer
+        self.lr = lr
+        self.batch_size = batch_size
+        self.max_memory = max_memory
         self.n_games = 0
         self.epsilon = 0 # randomness
         self.randomness = 80
         self.gamma = 0.9 # discount rate
-        self.memory = deque(maxlen=MAX_MEMORY) # automatic popleft()
+        self.memory = deque(maxlen=self.max_memory) # automatic popleft()
         self.init_memory() # reload all previous memeories up to MAX_MEMORY
         self.replay_memory = []
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.brain = QNet([19, 128, 128, 6], self.agent_name, self.name).to(self.device)
-        self.trainer = QTrainer_beta_1(self.brain, LR, self.gamma)
+        self.trainer = self.Qtrainer(self.brain, self.lr, self.gamma)
 
         if self.brain.load():
             print("Model loaded")
@@ -296,8 +306,8 @@ class Agent_alpha_1:
         # recall last lines of memory up to MAX_MEMORY
         with open("./alpha_1/memory/" + self.name +".txt", "r") as f:
             lines = f.readlines()
-            if len(lines) > MAX_MEMORY:
-                lines = lines[-MAX_MEMORY:]
+            if len(lines) > self.max_memory:
+                lines = lines[-self.max_memory:]
             for line in lines:
                 state, action, reward, next_state, gameover = line.split(";")
                 state = np.array(state[1:-1].split(","), dtype=np.float32)
@@ -307,7 +317,7 @@ class Agent_alpha_1:
                 gameover = np.array(gameover == 'True')
                 self.memory.append((state, action, reward, next_state, gameover))
 
-    def load_replay_memory(self, criterion="reward", size=BATCH_SIZE):
+    def load_replay_memory(self, criterion="reward"):
         with open("./alpha_1/memory/" + self.name +".txt", "r") as f:
             if criterion == "abs_reward":
                 crit = lambda x: abs(float(x.split(";")[2]))
@@ -324,8 +334,8 @@ class Agent_alpha_1:
 
             lines = sorted(f.readlines(), key=crit, reverse=reverse)
 
-        if len(lines) > size:
-            lines = lines[:size]
+        if len(lines) > self.batch_size:
+            lines = lines[:self.batch_size]
         for line in lines:
             state, action, reward, next_state, gameover = line.split(";")
             state = np.array(state[1:-1].split(","), dtype=np.float32)
@@ -434,8 +444,8 @@ class Agent_alpha_1:
 
     def train_long_memory(self):
         start = time.time()
-        if len(self.memory) > BATCH_SIZE:
-            batch_sample = random.sample(self.memory, BATCH_SIZE)
+        if len(self.memory) > self.batch_size:
+            batch_sample = random.sample(self.memory, self.batch_size)
             ''' Loss of the exploration phase in the long run
             batch_sample = []
             for i in range(len(self.memory)-1, len(self.memory) - 1 - BATCH_SIZE, -1):
@@ -460,10 +470,10 @@ class Agent_alpha_1:
         if self.name == "seeker": print(f"\033[94mtraning seeker's long memory took: {end - start} seconds\033[0m")
         else: print(f"\033[92mtraning hider's long memory took: {end - start} seconds\033[0m")
 
-    def train_replay(self, criterion="reward", size=BATCH_SIZE):
+    def train_replay(self, criterion="reward"):
         start = time.time()
 
-        self.load_replay_memory(criterion, size)
+        self.load_replay_memory(criterion)
 
         states, actions, rewards, next_states, gameovers = zip(*self.replay_memory)
 
@@ -512,19 +522,23 @@ class Agent_alpha_1:
 
 # Agent Alpha 2, comes to life after considerations made on hivemind prototypes, what about mimicking other examples of the same game? the state space is completely changed again in advantage of a coordinate/distance representation
 class Agent_alpha_2:
-    def __init__(self, name='model'):
-        self.name = name
+    def __init__(self, name='model', Qtrainer=QTrainer, lr = LR, batch_size = BATCH_SIZE, max_memory = MAX_MEMORY):
         self.agent_name = "alpha_2"
+        self.name = name
+        self.Qtrainer = Qtrainer
+        self.lr = lr
+        self.batch_size = batch_size
+        self.max_memory = max_memory
         self.n_games = 0
         self.epsilon = 0 # randomness
         self.randomness = 80
         self.gamma = 0.9 # discount rate
-        self.memory = deque(maxlen=MAX_MEMORY) # automatic popleft()
+        self.memory = deque(maxlen=self.max_memory) # automatic popleft()
         self.init_memory() # reload all previous memeories up to MAX_MEMORY
         self.replay_memory = []
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.brain = QNet([21, 256, 36, 6], self.agent_name, self.name).to(self.device)
-        self.trainer = QTrainer_beta_1(self.brain, LR, self.gamma)
+        self.trainer = self.Qtrainer(self.brain, self.lr, self.gamma)
 
         if self.brain.load():
             print("Model loaded")
@@ -542,8 +556,8 @@ class Agent_alpha_2:
         # recall last lines of memory up to MAX_MEMORY
         with open("./alpha_2/memory/" + self.name +".txt", "r") as f:
             lines = f.readlines()
-            if len(lines) > MAX_MEMORY:
-                lines = lines[-MAX_MEMORY:]
+            if len(lines) > self.max_memory:
+                lines = lines[-self.max_memory:]
             for line in lines:
                 state, action, reward, next_state, gameover = line.split(";")
                 state = np.array(state[1:-1].split(","), dtype=np.float32)
@@ -553,7 +567,7 @@ class Agent_alpha_2:
                 gameover = np.array(gameover == 'True')
                 self.memory.append((state, action, reward, next_state, gameover))
 
-    def load_replay_memory(self, criterion="reward", size=BATCH_SIZE):
+    def load_replay_memory(self, criterion="reward"):
         with open("./alpha_2/memory/" + self.name +".txt", "r") as f:
             if criterion == "abs_reward":
                 crit = lambda x: abs(float(x.split(";")[2]))
@@ -570,8 +584,8 @@ class Agent_alpha_2:
 
             lines = sorted(f.readlines(), key=crit, reverse=reverse)
 
-        if len(lines) > size:
-            lines = lines[:size]
+        if len(lines) > self.batch_size:
+            lines = lines[:self.batch_size]
         for line in lines:
             state, action, reward, next_state, gameover = line.split(";")
             state = np.array(state[1:-1].split(","), dtype=np.float32)
@@ -580,7 +594,7 @@ class Agent_alpha_2:
             next_state = np.array(next_state[1:-1].split(","), dtype=np.float32)
             gameover = np.array(gameover == 'True')
             self.replay_memory.append((state, action, reward, next_state, gameover))
-                
+
     # difference with alpha 0, the state is now encoded in a much simpler way
     def get_state(self, game, player):
         start = time.time()
@@ -659,6 +673,7 @@ class Agent_alpha_2:
 
         return state
 
+
     def get_action(self, state):
         start = time.time()
         # tradeoff exploration / exploitation
@@ -689,6 +704,7 @@ class Agent_alpha_2:
             f.write(str(next_state) + ";")
             f.write(str(gameover) + "\n")
 
+
     def train_short_memory(self, state, action, reward, next_state, gameover):
         start = time.time()
         state = np.array(state)
@@ -699,8 +715,8 @@ class Agent_alpha_2:
 
     def train_long_memory(self):
         start = time.time()
-        if len(self.memory) > BATCH_SIZE:
-            batch_sample = random.sample(self.memory, BATCH_SIZE)
+        if len(self.memory) > self.batch_size:
+            batch_sample = random.sample(self.memory, self.batch_size)
             ''' Loss of the exploration phase in the long run
             batch_sample = []
             for i in range(len(self.memory)-1, len(self.memory) - 1 - BATCH_SIZE, -1):
@@ -725,10 +741,10 @@ class Agent_alpha_2:
         if self.name == "seeker": print(f"\033[94mtraning seeker's long memory took: {end - start} seconds\033[0m")
         else: print(f"\033[92mtraning hider's long memory took: {end - start} seconds\033[0m")
 
-    def train_replay(self, criterion="reward", size=BATCH_SIZE):
+    def train_replay(self, criterion="reward"):
         start = time.time()
 
-        self.load_replay_memory(criterion, size)
+        self.load_replay_memory(criterion)
 
         states, actions, rewards, next_states, gameovers = zip(*self.replay_memory)
 
@@ -746,6 +762,7 @@ class Agent_alpha_2:
         print(f"\033[96mtrain_replay with {criterion} criterion in: {end - start} seconds\033[0m")
         print("+"*50)
         self.replay_memory = []
+
 
     def clean_memory(self, duplicates=100):
         start = time.time()
@@ -777,19 +794,23 @@ class Agent_alpha_2:
 
 # Hivemind series, as the name suggests, is meant to be able to predict next action taking into account the whole map
 class Agent_hivemind_0:
-    def __init__(self, name='model'):
-        self.name = name
+    def __init__(self, name='model', Qtrainer=QTrainer, lr = LR, batch_size = BATCH_SIZE, max_memory = MAX_MEMORY):
         self.agent_name = "hivemind_0"
+        self.name = name
+        self.Qtrainer = Qtrainer
+        self.lr = lr
+        self.batch_size = batch_size
+        self.max_memory = max_memory
         self.n_games = 0
         self.epsilon = 0 # randomness
         self.randomness = 80
         self.gamma = 0.9 # discount rate
-        self.memory = deque(maxlen=MAX_MEMORY) # automatic popleft()
+        self.memory = deque(maxlen=self.max_memory) # automatic popleft()
         self.init_memory() # reload all previous memories up to MAX_MEMORY
         self.replay_memory = []
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.brain = ConvQNet([[1, 3, 3, 1, 1], [3, 1, 7, 1, 0]], [36, 128, 128, 6], self.agent_name, self.name).to(self.device)
-        self.trainer = QTrainer_beta_1(self.brain, LR, self.gamma, convolutional=True, update_steps=10000)
+        self.trainer = self.Qtrainer(self.brain, self.lr, self.gamma, convolutional=True)
 
         if self.brain.load():
             print("Model loaded")
@@ -807,8 +828,8 @@ class Agent_hivemind_0:
         # recall last lines of memory up to MAX_MEMORY
         with open("./hivemind_0/memory/" + self.name +".txt", "r") as f:
             lines = f.readlines()
-            if len(lines) > MAX_MEMORY:
-                lines = lines[-MAX_MEMORY:]
+            if len(lines) > self.max_memory:
+                lines = lines[-self.max_memory:]
             for line in lines:
                 state, action, reward, next_state, gameover = line.split(";")
                 state = np.array(ast.literal_eval(state), dtype=np.float32)
@@ -818,7 +839,7 @@ class Agent_hivemind_0:
                 gameover = np.array(gameover == 'True')
                 self.memory.append((state, action, reward, next_state, gameover))
 
-    def load_replay_memory(self, criterion="reward", size=BATCH_SIZE):
+    def load_replay_memory(self, criterion="reward"):
         with open("./hivemind_0/memory/" + self.name +".txt", "r") as f:
             if criterion == "abs_reward":
                 crit = lambda x: abs(float(x.split(";")[2]))
@@ -835,8 +856,8 @@ class Agent_hivemind_0:
 
             lines = sorted(f.readlines(), key=crit, reverse=reverse)
 
-        if len(lines) > size:
-            lines = lines[:size]
+        if len(lines) > self.batch_size:
+            lines = lines[:self.batch_size]
         for line in lines:
             state, action, reward, next_state, gameover = line.split(";")
             state = np.array(ast.literal_eval(state), dtype=np.float32)
@@ -845,7 +866,7 @@ class Agent_hivemind_0:
             next_state = np.array(ast.literal_eval(next_state), dtype=np.float32)
             gameover = np.array(gameover == 'True')
             self.replay_memory.append((state, action, reward, next_state, gameover))
-                
+
     # hivemind agent is designed to acquire the matrix of the whole map
     def get_state(self, game, player):
         start = time.time()
@@ -900,8 +921,8 @@ class Agent_hivemind_0:
 
     def train_long_memory(self):
         start = time.time()
-        if len(self.memory) > BATCH_SIZE:
-            batch_sample = random.sample(self.memory, BATCH_SIZE)
+        if len(self.memory) > self.batch_size:
+            batch_sample = random.sample(self.memory, self.batch_size)
             ''' Loss of the exploration phase in the long run
             batch_sample = []
             for i in range(len(self.memory)-1, len(self.memory) - 1 - BATCH_SIZE, -1):
@@ -926,10 +947,10 @@ class Agent_hivemind_0:
         if self.name == "seeker": print(f"\033[94mtraning seeker's long memory took: {end - start} seconds\033[0m")
         else: print(f"\033[92mtraning hider's long memory took: {end - start} seconds\033[0m")
 
-    def train_replay(self, criterion="reward", size=BATCH_SIZE):
+    def train_replay(self, criterion="reward"):
         start = time.time()
 
-        self.load_replay_memory(criterion, size)
+        self.load_replay_memory(criterion)
 
         states, actions, rewards, next_states, gameovers = zip(*self.replay_memory)
 
