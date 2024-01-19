@@ -24,12 +24,12 @@ def main():
 
     # Instantiate Game and Agents
     game = Game(12, 12, 40)
-    agents = [Agent_alpha_0, Agent_alpha_1, Agent_alpha_2, Agent_hivemind_0]
+    agents = [Agent_alpha_0, Agent_alpha_1, Agent_hivemind_0, Agent_alpha_2]
     trainers = [QTrainer, QTrainer_beta_1]
-    LRs = [0.1, 0.05, 0.01, 0.005, 0.001]
-    batch_sizes = [100, 500, 1000, 5000, 10000]
-    max_memories = [500, 1000, 5000, 10000, 50000]
-    MAX_GENERATION = 500
+    LRs = [0.1, 0.01, 0.001]
+    batch_sizes = [1000, 5000, 10000]
+    max_memories = [5000, 10000, 50000]
+    MAX_GENERATION = 250
 
     #alpha_0 -> Done, alpha_1 -> Done, alpha_2 -> Done (need to be fixed -> stopping training at generation 50), hivemind_0 -> Done
     #for the moment Qtrainer_beta_1 use only default value for update_steps in his init method -> in future grid search update we'll need to pass this parameter to the selected agent
