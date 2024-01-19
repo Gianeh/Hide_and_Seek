@@ -803,7 +803,7 @@ class Agent_hivemind_0:
         self.max_memory = max_memory
         self.n_games = 0
         self.epsilon = 0 # randomness
-        self.randomness = 80
+        self.randomness = 200
         self.gamma = 0.9 # discount rate
         self.memory = deque(maxlen=self.max_memory) # automatic popleft()
         self.init_memory() # reload all previous memories up to MAX_MEMORY
