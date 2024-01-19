@@ -95,6 +95,11 @@ def main():
                                 hider.train_short_memory(hider_state, hider_action, hider_reward, hider_new_state, gameover)
                                 hider.remember(hider_state, hider_action, hider_reward, hider_new_state, gameover)
 
+                                hider_file_path = "./"+hider.agent_name+"/reward_"+hider.name+".txt"
+                                with open(hider_file_path, "a") as f:
+                                    f.write(str(hider_reward) + ";")
+
+
                             if not frames % 2 and seek:
                                 game.players[1].look()
                                 seeker_state = seeker.get_state(game, game.players[1])
@@ -104,6 +109,10 @@ def main():
                                 seeker_new_state = seeker.get_state(game, game.players[1])
                                 seeker.train_short_memory(seeker_state, seeker_action, seeker_reward, seeker_new_state, gameover)
                                 seeker.remember(seeker_state, seeker_action, seeker_reward, seeker_new_state, gameover)
+
+                                seeker_file_path = "./"+seeker.agent_name+"/reward_"+seeker.name+".txt"
+                                with open(seeker_file_path, "a") as f:
+                                    f.write(str(seeker_reward) + ";")
 
                             frames += 1
 
