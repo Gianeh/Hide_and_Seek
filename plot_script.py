@@ -32,8 +32,9 @@ for a in range(len(agents)):
             if line:
 
                 values = line.split(';')
+
                 # Crea un array numpy per i dati
-                data = np.array(values)
+                data = np.array(values[1:-1], dtype=int)
 
                 # Crea un nuovo grafico
                 plt.figure()
@@ -50,10 +51,10 @@ for a in range(len(agents)):
                 """new_ticks = [val for val in range(-100, 100 , 2)]
                 plt.yticks(new_ticks)"""
 
-                """
-                 y_ticks = np.arange(min(data), max(data)+1, step=2)  
+
+                y_ticks = np.arange(min(data), max(data)+1, step=20)
                 plt.yticks(y_ticks)
-                """
+
 
                 # Salva il grafico come immagine
                 image_name = os.path.join(plot_path, f'grafico_{os.path.splitext(txt_file)[0]}.png')
