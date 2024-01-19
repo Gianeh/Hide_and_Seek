@@ -3,6 +3,7 @@ from game import Game
 from agent import Agent_alpha_0, Agent_alpha_1, Agent_alpha_2, Agent_hivemind_0
 from models import QTrainer, QTrainer_beta_1
 import sys
+import os
 import argparse
 
 WHITE = (255, 255, 255)
@@ -135,11 +136,15 @@ def main():
                                 print(f"\033[92mHider Reward: {game.players[0].reward}\033[0m")
                                 print(f"\033[94mSeeker Reward: {game.players[1].reward}\033[0m")
 
-                                hider_file_path = "./"+hider.agent_name+"/reward_"+hider.name+".txt"
+                                hider_file_path = "./"+hider.agent_name+"/reward/reward_"+hider.name+".txt"
+                                if not os.path.exists("./"+hider.agent_name+"/reward"):
+                                    os.makedirs("./"+hider.agent_name+"/reward")
                                 with open(hider_file_path, "a") as f:
                                     f.write(str(game.players[0].reward) + ";")
 
-                                seeker_file_path = "./"+seeker.agent_name+"/reward_"+seeker.name+".txt"
+                                seeker_file_path = "./"+seeker.agent_name+"/reward/reward_"+seeker.name+".txt"
+                                if not os.path.exists("./"+seeker.agent_name+"/reward"):
+                                    os.makedirs("./"+seeker.agent_name+"/reward")
                                 with open(seeker_file_path, "a") as f:
                                     f.write(str(game.players[1].reward) + ";")
 
