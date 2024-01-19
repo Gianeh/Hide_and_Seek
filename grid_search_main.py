@@ -95,10 +95,6 @@ def main():
                                 hider.train_short_memory(hider_state, hider_action, hider_reward, hider_new_state, gameover)
                                 hider.remember(hider_state, hider_action, hider_reward, hider_new_state, gameover)
 
-                                hider_file_path = "./"+hider.agent_name+"/reward_"+hider.name+".txt"
-                                with open(hider_file_path, "a") as f:
-                                    f.write(str(hider_reward) + ";")
-
 
                             if not frames % 2 and seek:
                                 game.players[1].look()
@@ -109,10 +105,6 @@ def main():
                                 seeker_new_state = seeker.get_state(game, game.players[1])
                                 seeker.train_short_memory(seeker_state, seeker_action, seeker_reward, seeker_new_state, gameover)
                                 seeker.remember(seeker_state, seeker_action, seeker_reward, seeker_new_state, gameover)
-
-                                seeker_file_path = "./"+seeker.agent_name+"/reward_"+seeker.name+".txt"
-                                with open(seeker_file_path, "a") as f:
-                                    f.write(str(seeker_reward) + ";")
 
                             frames += 1
 
@@ -139,8 +131,17 @@ def main():
                                     print(f"Exploring and Exploiting with Epsilon: {seeker.epsilon}")
                                 else:
                                     print("Exploiting only")
-                                print(f"\033[94mSeeker Reward: {game.players[1].reward}\033[0m")
+
                                 print(f"\033[92mHider Reward: {game.players[0].reward}\033[0m")
+                                print(f"\033[94mSeeker Reward: {game.players[1].reward}\033[0m")
+
+                                hider_file_path = "./"+hider.agent_name+"/reward_"+hider.name+".txt"
+                                with open(hider_file_path, "a") as f:
+                                    f.write(str(game.players[0].reward) + ";")
+
+                                seeker_file_path = "./"+seeker.agent_name+"/reward_"+seeker.name+".txt"
+                                with open(seeker_file_path, "a") as f:
+                                    f.write(str(game.players[1].reward) + ";")
 
                                 game.reset()
                                 frames = 0
@@ -151,6 +152,7 @@ def main():
                                 seeker.n_games += 1
                                 if seek: seeker.train_long_memory()
 
+                                """"
                                 if (hider.n_games % 5 == 0 or seeker.n_games % 5 == 0) and (hider.n_games != 0 and seeker.n_games != 0):
                                     if hide: hider.train_replay("reward")
                                     if seek: seeker.train_replay("reward")
@@ -158,11 +160,12 @@ def main():
                                 if (hider.n_games % 10 == 0 or seeker.n_games % 10 == 0) and (hider.n_games != 0 and seeker.n_games != 0):
                                     if hide: hider.train_replay("neg_reward")
                                     if seek: seeker.train_replay("neg_reward")
-                                '''
+                                
                                 if (hider.n_games % 30 == 0 or seeker.n_games % 30 == 0) and (hider.n_games != 0 and seeker.n_games != 0):
                                     if hide : hider.clean_memory(duplicates=5)
                                     if seek : seeker.clean_memory(duplicates=5)
-                                    '''
+                                    """
+
                                 if (hider.n_games == MAX_GENERATION or seeker.n_games == MAX_GENERATION): break
 
 
