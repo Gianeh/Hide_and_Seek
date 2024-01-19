@@ -9,7 +9,7 @@ WHITE = (255, 255, 255)
 BLACK = (0, 0, 0)
 
 MAX_TIME = 1000
-WINTIME = 400
+WINTIME = 5
 
 
 def main():
