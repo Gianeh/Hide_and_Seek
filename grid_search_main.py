@@ -42,7 +42,7 @@ def main():
                 for b in range(len(batch_sizes)):
                     for m in range(len(max_memories)):
                         hider = agents[a]('hider_'+str(m)+str(b)+str(l)+str(t), trainers[t], LRs[l], batch_sizes[b], max_memories[m])
-                        seeker = agents[a]('seeker'+str(m)+str(b)+str(l)+str(t), trainers[t], LRs[l], batch_sizes[b], max_memories[m])
+                        seeker = agents[a]('seeker_'+str(m)+str(b)+str(l)+str(t), trainers[t], LRs[l], batch_sizes[b], max_memories[m])
 
 
                         frames = 0
