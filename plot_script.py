@@ -4,7 +4,8 @@ import numpy as np
 
 
 
-agents = ["alpha_0", "alpha_1", "hivemind_0", "alpha_2"]
+agents = ["alpha_0", "alpha_1", "alpha_3", "hivemind_0", "alpha_2"]
+
 for a in range(len(agents)):
 
     reward_path = "./"+agents[a]+"/reward"

@@ -49,14 +49,14 @@ class Game:
             for col in range(self.cols):
                 x = col * self.size
                 y = row * self.size
-                '''
+                
                 if col % 5 == 0 and row % 7 == 0:
                     map[row].append(MovableWall(x, y, self.size))
                 else:
                     map[row].append(Floor(x, y, self.size))
-                '''
                 
-                map[row].append(Floor(x, y, self.size))
+                
+                #map[row].append(Floor(x, y, self.size))
         return map
 
     def init_players(self):

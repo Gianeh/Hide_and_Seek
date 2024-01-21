@@ -1,15 +1,17 @@
 # Hide and Seek in a grid!
 import pygame as pg
 from game import Game
-from agent import Agent_alpha_0, Agent_alpha_1, Agent_alpha_2, Agent_hivemind_0
+from agent import Agent_alpha_0, Agent_alpha_1, Agent_alpha_2, Agent_alpha_3, Agent_hivemind_0
+from models import QTrainer, QTrainer_beta_1
 import sys
 import argparse
+import os
 
 WHITE = (255, 255, 255)
 BLACK = (0, 0, 0)
 
-MAX_TIME = 1000
-WINTIME = 1
+MAX_TIME = 1500
+WINTIME = 3
 
 
 def main():
@@ -23,9 +25,9 @@ def main():
     seek = args.seek
 
     # Instantiate Game and Agents
-    game = Game(12,12,40)
-    hider = Agent_alpha_2('hider')
-    seeker = Agent_alpha_2('seeker')
+    game = Game(30,30,20)
+    hider = Agent_alpha_3('hider')
+    seeker = Agent_alpha_3('seeker')
 
 
     frames = 0
@@ -33,6 +35,7 @@ def main():
     gameover = False
     stop = False
     render = True
+
     while True:
         # close the window
         for event in pg.event.get():
@@ -114,6 +117,20 @@ def main():
             print(f"\033[94mSeeker Reward: {game.players[1].reward}\033[0m")
             print(f"\033[92mHider Reward: {game.players[0].reward}\033[0m")
 
+
+            hider_file_path = "./"+hider.agent_name+"/reward/reward_"+hider.name+".txt"
+            if not os.path.exists("./"+hider.agent_name+"/reward"):
+                os.makedirs("./"+hider.agent_name+"/reward")
+            with open(hider_file_path, "a") as f:
+                f.write(str(game.players[0].reward) + ";")
+
+            seeker_file_path = "./"+seeker.agent_name+"/reward/reward_"+seeker.name+".txt"
+            if not os.path.exists("./"+seeker.agent_name+"/reward"):
+                os.makedirs("./"+seeker.agent_name+"/reward")
+            with open(seeker_file_path, "a") as f:
+                f.write(str(game.players[1].reward) + ";")
+
+
             game.reset()
             frames = 0
             gameover = False
@@ -123,18 +140,18 @@ def main():
             seeker.n_games += 1
             if seek: seeker.train_long_memory()
             
-            if (hider.n_games % 5 == 0 or seeker.n_games % 5 == 0) and (hider.n_games != 0 and seeker.n_games != 0):
+            if (hider.n_games % 20 == 0 or seeker.n_games % 20 == 0) and (hider.n_games != 0 and seeker.n_games != 0):
                 if hide : hider.train_replay("reward")
                 if seek : seeker.train_replay("reward")
-
+            """
             if (hider.n_games % 10 == 0 or seeker.n_games % 10 == 0) and (hider.n_games != 0 and seeker.n_games != 0):
                 if hide : hider.train_replay("neg_reward")
                 if seek : seeker.train_replay("neg_reward")
-            '''
+            """
             if (hider.n_games % 30 == 0 or seeker.n_games % 30 == 0) and (hider.n_games != 0 and seeker.n_games != 0):
                 if hide : hider.clean_memory(duplicates=5)
                 if seek : seeker.clean_memory(duplicates=5)
-                '''
+                
 
 
 if __name__ == "__main__":

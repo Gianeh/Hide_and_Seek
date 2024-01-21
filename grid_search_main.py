@@ -9,8 +9,8 @@ import argparse
 WHITE = (255, 255, 255)
 BLACK = (0, 0, 0)
 
-MAX_TIME = 1000
-WINTIME = 1
+MAX_TIME = 1500
+WINTIME = 3
 
 
 def main():
@@ -24,13 +24,13 @@ def main():
     seek = args.seek
 
     # Instantiate Game and Agents
-    game = Game(12, 12, 40)
-    agents = [Agent_alpha_0, Agent_alpha_1, Agent_hivemind_0, Agent_alpha_2]
+    game = Game(30, 30, 20)
+    agents = [Agent_alpha_0, Agent_alpha_1, Agent_alpha_3, Agent_hivemind_0, Agent_alpha_2]
     trainers = [QTrainer, QTrainer_beta_1]
     LRs = [0.1, 0.01, 0.001]
     batch_sizes = [1000, 5000, 10000]
     max_memories = [5000, 10000, 50000]
-    MAX_GENERATION = 250
+    MAX_GENERATION = 350
 
     #alpha_0 -> Done, alpha_1 -> Done, alpha_2 -> Done (need to be fixed -> stopping training at generation 50), hivemind_0 -> Done
     #for the moment Qtrainer_beta_1 use only default value for update_steps in his init method -> in future grid search update we'll need to pass this parameter to the selected agent
@@ -157,19 +157,19 @@ def main():
                                 seeker.n_games += 1
                                 if seek: seeker.train_long_memory()
 
-                                """"
-                                if (hider.n_games % 5 == 0 or seeker.n_games % 5 == 0) and (hider.n_games != 0 and seeker.n_games != 0):
+                                
+                                if (hider.n_games % 20 == 0 or seeker.n_games % 20 == 0) and (hider.n_games != 0 and seeker.n_games != 0):
                                     if hide: hider.train_replay("reward")
                                     if seek: seeker.train_replay("reward")
-
+                                """
                                 if (hider.n_games % 10 == 0 or seeker.n_games % 10 == 0) and (hider.n_games != 0 and seeker.n_games != 0):
                                     if hide: hider.train_replay("neg_reward")
                                     if seek: seeker.train_replay("neg_reward")
-                                
+                                """
                                 if (hider.n_games % 30 == 0 or seeker.n_games % 30 == 0) and (hider.n_games != 0 and seeker.n_games != 0):
                                     if hide : hider.clean_memory(duplicates=5)
                                     if seek : seeker.clean_memory(duplicates=5)
-                                    """
+                                    
 
                                 if (hider.n_games == MAX_GENERATION or seeker.n_games == MAX_GENERATION): break
 
