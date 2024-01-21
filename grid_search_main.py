@@ -1,6 +1,6 @@
 import pygame as pg
 from game import Game
-from agent import Agent_alpha_0, Agent_alpha_1, Agent_alpha_2, Agent_hivemind_0
+from agent import Agent_alpha_0, Agent_alpha_1, Agent_alpha_2, Agent_hivemind_0, Agent_alpha_3
 from models import QTrainer, QTrainer_beta_1
 import sys
 import os
