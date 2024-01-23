@@ -26,8 +26,8 @@ def main():
 
     # Instantiate Game and Agents
     game = Game(30,30,20)
-    hider = Agent_alpha_3('hider')
-    seeker = Agent_alpha_3('seeker')
+    hider = Agent_alpha_3('hider_0021', QTrainer_beta_1, 0.001, 1000, 5000)
+    seeker = Agent_alpha_3('seeker_0021',QTrainer_beta_1, 0.001, 1000, 5000)
 
 
     frames = 0
@@ -79,7 +79,7 @@ def main():
             hider_reward = game.reward(game.players[0], valid_action, WINTIME, criterion="explore")
             hider_new_state = hider.get_state(game, game.players[0])
             hider.train_short_memory(hider_state, hider_action, hider_reward, hider_new_state, gameover)
-            hider.remember(hider_state, hider_action, hider_reward, hider_new_state, gameover)
+            #hider.remember(hider_state, hider_action, hider_reward, hider_new_state, gameover)
         
         if not frames % 2 and seek:
             game.players[1].look()
@@ -89,7 +89,7 @@ def main():
             seeker_reward = game.reward(game.players[1], valid_action, WINTIME, criterion="explore")
             seeker_new_state = seeker.get_state(game, game.players[1])
             seeker.train_short_memory(seeker_state, seeker_action, seeker_reward, seeker_new_state, gameover)
-            seeker.remember(seeker_state, seeker_action, seeker_reward, seeker_new_state, gameover)
+            #seeker.remember(seeker_state, seeker_action, seeker_reward, seeker_new_state, gameover)
 
         frames += 1
 
@@ -136,21 +136,22 @@ def main():
             gameover = False
             stop = False
             hider.n_games += 1
-            if hide: hider.train_long_memory()
+            #if hide: hider.train_long_memory()
             seeker.n_games += 1
-            if seek: seeker.train_long_memory()
-            
+            #if seek: seeker.train_long_memory()
+            """"
             if (hider.n_games % 20 == 0 or seeker.n_games % 20 == 0) and (hider.n_games != 0 and seeker.n_games != 0):
                 if hide : hider.train_replay("reward")
                 if seek : seeker.train_replay("reward")
-            """
+            
             if (hider.n_games % 10 == 0 or seeker.n_games % 10 == 0) and (hider.n_games != 0 and seeker.n_games != 0):
                 if hide : hider.train_replay("neg_reward")
                 if seek : seeker.train_replay("neg_reward")
-            """
+            
             if (hider.n_games % 30 == 0 or seeker.n_games % 30 == 0) and (hider.n_games != 0 and seeker.n_games != 0):
                 if hide : hider.clean_memory(duplicates=5)
                 if seek : seeker.clean_memory(duplicates=5)
+            """
                 
 
 
