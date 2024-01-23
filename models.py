@@ -160,7 +160,7 @@ class QTrainer:
 
 
 class QTrainer_beta_1:
-    def __init__(self, model, lr, gamma, convolutional=False, update_steps = 1000):
+    def __init__(self, model, lr, gamma, convolutional=False, update_steps = 100):
         self.lr = lr
         self.gamma = gamma
         self.model = model
@@ -224,9 +224,6 @@ class QTrainer_beta_1:
 
             target[idx][torch.argmax(action[idx]).item()] = Q_new
 
-        # 2: Q_new = r + y * max(next_predicted Q value) -> only do this if not done
-        # pred.clone()
-        # preds[argmax(action)] = Q_new
         self.optimizer.zero_grad()
         loss = self.criterion(target, pred)
         loss.backward()
