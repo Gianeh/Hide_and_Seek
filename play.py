@@ -27,8 +27,8 @@ def main():
 
     # Instantiate Game and Agents
     game = Game(30, 30, 20)
-    hider = Agent_alpha_6('hider')
-    seeker = Agent_alpha_6('seeker')
+    hider = Agent_alpha_6('hider', epsilon=0.05)
+    seeker = Agent_alpha_6('seeker', epsilon=0.05)
 
     seeker_rewards, eps_history = [], []
 
@@ -75,14 +75,16 @@ def main():
         if frames % 2 and hide:
             game.players[0].look()
             hider_state = hider.get_state(game, game.players[0])
-            hider_action = hider.perform_action(hider_state)
+            #hider_action = hider.perform_action(hider_state)
+            hider_action = hider.get_action(hider_state)
             valid_action = game.control_player(game.players[0], hider_action)
             hider_reward = game.reward(game.players[0], valid_action, WINTIME, criterion="explore")
 
         if not frames % 2 and seek:
             game.players[1].look()
             seeker_state = seeker.get_state(game, game.players[1])
-            seeker_action = seeker.perform_action(seeker_state)
+            #seeker_action = seeker.perform_action(seeker_state)
+            seeker_action = seeker.get_action(seeker_state)
             valid_action = game.control_player(game.players[1], seeker_action)
             seeker_reward = game.reward(game.players[1], valid_action, WINTIME, criterion="explore")
 
@@ -119,7 +121,8 @@ def main():
             avg_reward = np.mean(seeker_rewards[-100:])
             print('Game: ', seeker.n_games, ' Seeker reward %.2f' % game.players[1].reward, 'average reward %.2f' % avg_reward, 'epsilon %.2f' % seeker.epsilon)
 
-            filename = 'alpha6_play.png'
+            #filename = 'alpha6_play.png'
+            filename = seeker.agent_name+'.png'
             if seeker.n_games % 50 == 0:
                 x = [i + 1 for i in range(seeker.n_games)]
                 plot_learning_curve(x, seeker_rewards, eps_history, filename)
