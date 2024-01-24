@@ -27,8 +27,8 @@ def main():
 
     # Instantiate Game and Agents
     game = Game(30, 30, 20)
-    hider = Agent_alpha_6('hider', epsilon=0.05)
-    seeker = Agent_alpha_6('seeker', epsilon=0.05)
+    hider = Agent_alpha_6('hider', epsilon=0.1)
+    seeker = Agent_alpha_6('seeker', epsilon=0.1)
 
     seeker_rewards, eps_history = [], []
 
@@ -122,7 +122,7 @@ def main():
             print('Game: ', seeker.n_games, ' Seeker reward %.2f' % game.players[1].reward, 'average reward %.2f' % avg_reward, 'epsilon %.2f' % seeker.epsilon)
 
             #filename = 'alpha6_play.png'
-            filename = seeker.agent_name+'.png'
+            filename = seeker.agent_name+'_play.png'
             if seeker.n_games % 50 == 0:
                 x = [i + 1 for i in range(seeker.n_games)]
                 plot_learning_curve(x, seeker_rewards, eps_history, filename)
