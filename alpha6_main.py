@@ -141,7 +141,8 @@ def main():
             avg_reward = np.mean(seeker_rewards[-100:])
             print('Game: ', seeker.n_games, ' Seeker reward %.2f' % game.players[1].reward, 'average reward %.2f' % avg_reward, 'epsilon %.2f' % seeker.epsilon)
 
-            filename = 'alpha6.png'
+            #filename = 'alpha6.png'
+            filename = seeker.agent_name+'.png'
             if seeker.n_games % 50 == 0:
                 x = [i + 1 for i in range(seeker.n_games)]
                 plot_learning_curve(x, seeker_rewards, eps_history, filename)

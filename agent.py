@@ -1381,7 +1381,7 @@ class Agent_alpha_4:
 
 
 class Agent_alpha_5:
-    def __init__(self, name='model', Qtrainer=QTrainer_beta_1, lr=0.001, batch_size=1000, max_memory=100000, eps_dec= 5e-4, eps_min = 0.05):
+    def __init__(self, name='model', Qtrainer=QTrainer_beta_1, lr=0.001, batch_size=1000, max_memory=100000, epsilon = 1.0, eps_dec= 5e-4, eps_min = 0.05):
         self.agent_name = "alpha_5"
         self.name = name
         self.Qtrainer = Qtrainer
@@ -1389,7 +1389,7 @@ class Agent_alpha_5:
         self.batch_size = batch_size
         self.max_memory = max_memory
         self.n_games = 0
-        self.epsilon = 1
+        self.epsilon = epsilon
         self.eps_dec = eps_dec
         self.eps_min = eps_min
         self.gamma = 0.9  # discount rate
