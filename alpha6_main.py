@@ -26,7 +26,7 @@ def main():
     seek = args.seek
 
     # Instantiate Game and Agents
-    game = Game(30, 30, 20)
+    game = Game(26, 25, 20)
     hider = Agent_alpha_6('hider', eps_min=0.1)
     seeker = Agent_alpha_6('seeker', eps_min=0.1)
 

@@ -42,7 +42,7 @@ class Game:
         self.players = self.init_players()
 
 
-    def init_map(self):
+    '''def init_map(self):
         map = []
         for row in range(self.rows):
             map.append([])
@@ -57,12 +57,29 @@ class Game:
                 
                 
                # map[row].append(Floor(x, y, self.size))
+        return map'''
+    
+    def init_map(self):
+        map = []
+        with open('map.txt', 'r') as file:
+            matrix = [list(line.strip()) for line in file]
+            for row in range(len(matrix)):
+                map.append([])
+                for col in range(len(matrix[row])):
+                    x = col * self.size
+                    y = row * self.size
+                    if matrix[row][col] == 'f':
+                        map[row].append(Floor(x, y, self.size))
+                    elif matrix[row][col] == 'm':
+                        map[row].append(MovableWall(x, y, self.size))
         return map
+
+
 
     def init_players(self):
         players = []
-        i = random.randint(0, self.cols - 1)
-        j = random.randint(0, self.rows - 1)
+        i = random.randint(0, self.rows - 1)
+        j = random.randint(0, self.cols - 1)
 
         while self.map[i][j].obj_type != 'floor':
             i = random.randint(0, self.rows - 1)
@@ -71,9 +88,9 @@ class Game:
         #print("coordinates: ", i, j ,"obj_type: ",self.map[i][j].obj_type, "\n")
 
         while self.map[i][j].obj_type != 'floor':
-            i = random.randint(0, self.cols - 1)
-            j = random.randint(0, self.rows - 1)
-        players.append(Seeker(i*self.size, j*self.size, self.size, map=self.map, cols=self.cols))
+            i = random.randint(0, self.rows - 1)
+            j = random.randint(0, self.cols - 1)
+        players.append(Seeker(j*self.size, i*self.size, self.size, map=self.map, cols=self.cols))
         #print("coordinates: ", i, j, "obj_type: ", self.map[i][j].obj_type, "\n")
 
         players[0].look()
