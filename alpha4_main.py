@@ -1,7 +1,7 @@
 import numpy as np
 import pygame as pg
 from game import Game
-from agent import Agent_alpha_4
+from agent import Agent_alpha_5
 from models import QTrainer_beta_1
 import sys
 import argparse
@@ -27,8 +27,8 @@ def main():
 
     # Instantiate Game and Agents
     game = Game(30, 30, 20)
-    hider = Agent_alpha_4('hider')
-    seeker = Agent_alpha_4('seeker')
+    hider = Agent_alpha_5('hider')
+    seeker = Agent_alpha_5('seeker')
 
     seeker_rewards, eps_history = [], []
 
@@ -141,7 +141,7 @@ def main():
             avg_reward = np.mean(seeker_rewards[-100:])
             print('Game: ', seeker.n_games, ' Seeker reward %.2f' % game.players[1].reward, 'average reward %.2f' % avg_reward, 'epsilon %.2f' % seeker.epsilon)
 
-            filename = 'alpha4.png'
+            filename = 'alpha5.png'
             if seeker.n_games % 50 == 0:
                 x = [i + 1 for i in range(seeker.n_games)]
                 plot_learning_curve(x, seeker_rewards, eps_history, filename)
