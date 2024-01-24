@@ -1540,3 +1540,149 @@ class Agent_alpha_5:
 
     def decrement_epsilon(self):
         self.epsilon = self.epsilon - self.eps_dec if self.epsilon > self.eps_min else self.eps_min
+
+class Agent_alpha_6:
+    def __init__(self, name='model', Qtrainer=QTrainer_beta_1, lr=0.001, batch_size=1000, max_memory=100000, eps_dec= 5e-4, eps_min = 0.05):
+        self.agent_name = "alpha_6"
+        self.name = name
+        self.Qtrainer = Qtrainer
+        self.lr = lr
+        self.batch_size = batch_size
+        self.max_memory = max_memory
+        self.n_games = 0
+        self.epsilon = 1
+        self.eps_dec = eps_dec
+        self.eps_min = eps_min
+        self.gamma = 0.9  # discount rate
+        self.memory = deque(maxlen=self.max_memory)  # automatic popleft()
+        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        self.brain = QNet([83, 256, 256, 6], self.agent_name, self.name).to(self.device)
+        self.trainer = self.Qtrainer(self.brain, self.lr, self.gamma)
+
+        if self.brain.load():
+            print("Model loaded")
+
+        print(f"AGENT ALPHA 6: training {self.name} with {self.device} device")
+
+
+    def get_state(self, game, player):
+        start = time.time()
+        x = player.x
+        y = player.y
+        i = y // player.size
+        j = x // player.size
+
+        other_player = game.players[0] if player.obj_type == 'seeker' else game.players[1]
+        other_player_i = other_player.y // other_player.size
+        other_player_j = other_player.x // other_player.size
+
+        directions = {'u' : '0001', 'd' : '0010', 'l' : '0100', 'r' : '1000'}
+
+        view = player.view
+        objects = {'wall': '10000', 'floor': '01000', 'hider': '00100', 'movable_wall': '00010', 'seeker': '00001', None: '00000'}
+        # ["wall", "floor", "hider", "movable_wall", None]
+        view_vector = []
+        for l in view:
+            for c in l:
+                if c is None:
+                    for n in objects[c]:
+                        view_vector.append(int(n))
+                else:
+                    for n in objects[c.obj_type]:
+                        view_vector.append(int(n))
+
+        neighbourhood = []  # left back right
+
+        if player.direction == 'u':
+            left = player.map[i][j - 1].obj_type if j - 1 >= 0 else None
+            back = player.map[i + 1][j].obj_type if i + 1 < game.rows else None
+            right = player.map[i][j + 1].obj_type if j + 1 < game.cols else None
+
+        elif player.direction == 'd':
+            left = player.map[i][j + 1].obj_type if j + 1 < game.cols else None
+            back = player.map[i - 1][j].obj_type if i - 1 >= 0 else None
+            right = player.map[i][j - 1].obj_type if j - 1 >= 0 else None
+
+        elif player.direction == 'l':
+            left = player.map[i + 1][j].obj_type if i + 1 < game.rows else None
+            back = player.map[i][j + 1].obj_type if j + 1 < game.cols else None
+            right = player.map[i - 1][j].obj_type if i - 1 >= 0 else None
+
+        elif player.direction == 'r':
+            left = player.map[i - 1][j].obj_type if i - 1 >= 0 else None
+            back = player.map[i][j - 1].obj_type if j - 1 >= 0 else None
+            right = player.map[i + 1][j].obj_type if i + 1 < game.rows else None
+
+        for n in objects[left]:
+            neighbourhood.append(int(n))
+        for n in objects[back]:
+            neighbourhood.append(int(n))
+        for n in objects[right]:
+            neighbourhood.append(int(n))
+
+        direction = []
+
+        for n in directions[player.direction]:
+            direction.append(int(n))
+
+
+        state = [i,j] + view_vector + neighbourhood + direction + [other_player_i, other_player_j]
+
+        return state
+
+    def get_action(self, state):
+        # tradeoff exploration / exploitation
+        final_action = [0, 0, 0, 0, 0, 0]
+        if np.random.random() > self.epsilon:
+            state = np.array(state)
+            current_state = torch.tensor(state, dtype=torch.float).to(self.device)
+            prediction = self.brain(current_state)
+            action = torch.argmax(prediction).item()
+            final_action[action] = 1
+        else:
+            action = random.randint(0, 5)
+            final_action[action] = 1
+
+        return final_action
+    
+
+    def perform_action(self, state):
+        # tradeoff exploration / exploitation
+        final_action = [0, 0, 0, 0, 0, 0]
+        
+        state = np.array(state)
+        current_state = torch.tensor(state, dtype=torch.float).to(self.device)
+        prediction = self.brain(current_state)
+        action = torch.argmax(prediction).item()
+        final_action[action] = 1
+
+        return final_action
+
+    def remember(self, state, action, reward, next_state, gameover):
+        self.memory.append((state, action, reward, next_state, gameover))
+
+
+    def train(self):
+        if len(self.memory) < self.batch_size:
+            return
+        else:
+            batch_sample = random.sample(self.memory, self.batch_size)
+
+        states, actions, rewards, next_states, gameovers = zip(*batch_sample)
+
+        # convert to numpy arrays
+        states = np.array(states)
+        actions = np.array(actions)
+        rewards = np.array(rewards)
+        next_states = np.array(next_states)
+        gameovers = np.array(gameovers)
+
+        self.trainer.train_step(states, actions, rewards, next_states, gameovers)
+
+        self.brain.save()
+
+        self.decrement_epsilon()
+
+
+    def decrement_epsilon(self):
+        self.epsilon = self.epsilon - self.eps_dec if self.epsilon > self.eps_min else self.eps_min
