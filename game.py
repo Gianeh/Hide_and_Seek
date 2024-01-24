@@ -50,13 +50,13 @@ class Game:
                 x = col * self.size
                 y = row * self.size
                 
-                if col % 5 == 0 and row % 7 == 0:
+                if col % 9 == 0 and row % 11 == 0:
                     map[row].append(MovableWall(x, y, self.size))
                 else:
                     map[row].append(Floor(x, y, self.size))
                 
                 
-                #map[row].append(Floor(x, y, self.size))
+               # map[row].append(Floor(x, y, self.size))
         return map
 
     def init_players(self):

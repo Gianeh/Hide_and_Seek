@@ -1381,7 +1381,7 @@ class Agent_alpha_4:
 
 
 class Agent_alpha_5:
-    def __init__(self, name='model', Qtrainer=QTrainer_beta_1, lr=0.0001, batch_size=1000, max_memory=100000, eps_dec= 5e-5, eps_min = 0.01):
+    def __init__(self, name='model', Qtrainer=QTrainer_beta_1, lr=0.001, batch_size=1000, max_memory=100000, eps_dec= 5e-4, eps_min = 0.05):
         self.agent_name = "alpha_5"
         self.name = name
         self.Qtrainer = Qtrainer
@@ -1469,11 +1469,11 @@ class Agent_alpha_5:
             neighbourhood.append(int(n))
 
         # normalize everything
-        i = i / game.rows
-        j = j / game.cols
+        #i = i / game.rows
+        #j = j / game.cols
         distance = distance / (game.rows + game.cols)
-        other_player_i = other_player_i / game.rows
-        other_player_j = other_player_j / game.cols
+        #other_player_i = other_player_i / game.rows
+        #other_player_j = other_player_j / game.cols
 
         state = [i,j] + view_vector + neighbourhood + [distance, direction] + [other_player_i, other_player_j]
 
@@ -1491,6 +1491,19 @@ class Agent_alpha_5:
         else:
             action = random.randint(0, 5)
             final_action[action] = 1
+
+        return final_action
+    
+
+    def perform_action(self, state):
+        # tradeoff exploration / exploitation
+        final_action = [0, 0, 0, 0, 0, 0]
+        
+        state = np.array(state)
+        current_state = torch.tensor(state, dtype=torch.float).to(self.device)
+        prediction = self.brain(current_state)
+        action = torch.argmax(prediction).item()
+        final_action[action] = 1
 
         return final_action
 
