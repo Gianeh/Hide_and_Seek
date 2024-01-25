@@ -36,8 +36,10 @@ class Game:
         self.movable_wall_img = pg.image.load('./img/movable_wall.png')               #<------------
         # crop to size
         self.movable_wall_img = pg.transform.scale(self.movable_wall_img, (self.size, self.size))
-        self.wall_img = pg.image.load('./img/wall2.png')   
+        self.wall_img = pg.image.load('./img/wall.png')   
         self.wall_img = pg.transform.scale(self.wall_img, (self.size, self.size))
+        self.floor_img = pg.image.load('./img/floor3.png')   
+        self.floor_img = pg.transform.scale(self.floor_img, (self.size, self.size))
 
     def reset(self):
         self.map = self.init_map()
@@ -115,6 +117,8 @@ class Game:
                     self.screen.blit(self.movable_wall_img, (self.map[row][col].x, self.map[row][col].y))
                 elif self.map[row][col].obj_type == 'wall':
                     self.screen.blit(self.wall_img, (self.map[row][col].x, self.map[row][col].y))
+                elif self.map[row][col].obj_type == 'floor':
+                    self.screen.blit(self.floor_img, (self.map[row][col].x, self.map[row][col].y))
                 else:
                     pg.draw.rect(self.screen, self.map[row][col].color, (self.map[row][col].x, self.map[row][col].y, self.map[row][col].size, self.map[row][col].size), 25)
 
