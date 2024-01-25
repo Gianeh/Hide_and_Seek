@@ -26,15 +26,17 @@ class Game:
         # define a clock to control the fps
         self.clock = pg.time.Clock()
 
-        self.hider = pg.image.load('img3.png')
-        self.seeker = pg.image.load('img2.png')
+        self.hider = pg.image.load('./img/hider.png')
+        self.seeker = pg.image.load('./img/seeker.png')
 
         # crop to size
         self.hider = pg.transform.scale(self.hider, (self.size, self.size))
         self.seeker = pg.transform.scale(self.seeker, (self.size, self.size))
-        # self.player_img.set_colorkey(WHITE)                     #<------------
-        self.wall_img = pg.image.load('wall.png')               #<------------
+        # self.player_img.set_colorkey(WHITE)                     
+        self.movable_wall_img = pg.image.load('./img/movable_wall.png')               #<------------
         # crop to size
+        self.movable_wall_img = pg.transform.scale(self.movable_wall_img, (self.size, self.size))
+        self.wall_img = pg.image.load('./img/wall2.png')   
         self.wall_img = pg.transform.scale(self.wall_img, (self.size, self.size))
 
     def reset(self):
@@ -61,7 +63,7 @@ class Game:
     
     def init_map(self):
         map = []
-        with open('map.txt', 'r') as file:
+        with open('./maps/map2.txt', 'r') as file:
             matrix = [list(line.strip()) for line in file]
             for row in range(len(matrix)):
                 map.append([])
@@ -72,6 +74,8 @@ class Game:
                         map[row].append(Floor(x, y, self.size))
                     elif matrix[row][col] == 'm':
                         map[row].append(MovableWall(x, y, self.size))
+                    elif matrix[row][col] == 'w':
+                        map[row].append(Wall(x, y, self.size))
         return map
 
 
@@ -108,6 +112,8 @@ class Game:
         for row in range(self.rows):
             for col in range(self.cols):
                 if self.map[row][col].obj_type == 'movable_wall':
+                    self.screen.blit(self.movable_wall_img, (self.map[row][col].x, self.map[row][col].y))
+                elif self.map[row][col].obj_type == 'wall':
                     self.screen.blit(self.wall_img, (self.map[row][col].x, self.map[row][col].y))
                 else:
                     pg.draw.rect(self.screen, self.map[row][col].color, (self.map[row][col].x, self.map[row][col].y, self.map[row][col].size, self.map[row][col].size), 25)
@@ -120,9 +126,9 @@ class Game:
                     if p.view[l][c] is None:
                         continue
                     elif p.view[l][c].obj_type == 'movable_wall':
+                        self.screen.blit(self.movable_wall_img, (p.view[l][c].x, p.view[l][c].y))
+                    elif p.view[l][c].obj_type == 'wall':
                         self.screen.blit(self.wall_img, (p.view[l][c].x, p.view[l][c].y))
-                    #elif p.view[l][c].obj_type == 'wall':
-                        #pg.draw.rect(self.screen, p.view[l][c].color, (p.view[l][c].x, p.view[l][c].y, p.view[l][c].size, p.view[l][c].size), 25)
                     elif p.view[l][c].obj_type == 'hider':
                         self.screen.blit(self.hider, (p.view[l][c].x, p.view[l][c].y))
                     elif p.view[l][c].obj_type == 'seeker':
