@@ -144,13 +144,13 @@ def main():
             if hide: hider.train()
             if seek: seeker.train()
 
-            hider.n_games += 1
-            seeker.n_games += 1
-
             seeker_rewards.append(game.players[1].reward)
             eps_history.append(seeker.epsilon)
             avg_reward = np.mean(seeker_rewards[-100:])
             print('Game: ', seeker.n_games, ' Seeker reward %.2f' % game.players[1].reward, 'average reward %.2f' % avg_reward, 'epsilon %.2f' % seeker.epsilon)
+
+            hider.n_games += 1
+            seeker.n_games += 1
 
             #filename = 'alpha6.png'
             filename = seeker.agent_name+'.png'
