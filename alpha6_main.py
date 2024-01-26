@@ -27,8 +27,8 @@ def main():
 
     # Instantiate Game and Agents
     game = Game(26, 25, 40)
-    hider = Agent_alpha_6('hider', eps_min=0.1)
-    seeker = Agent_alpha_6('seeker', eps_min=0.1)
+    hider = Agent_alpha_6('hider', lr=0.0005, batch_size=2000,max_memory=1000000, eps_dec=2e-4, eps_min=0.15)
+    seeker = Agent_alpha_6('seeker', lr=0.0005, batch_size=2000,max_memory=1000000, eps_dec=2e-4, eps_min=0.15)
 
     seeker_rewards, eps_history = [], []
 

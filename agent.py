@@ -1556,7 +1556,7 @@ class Agent_alpha_6:
         self.gamma = 0.9  # discount rate
         self.memory = deque(maxlen=self.max_memory)  # automatic popleft()
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        self.brain = QNet([83, 256, 256, 6], self.agent_name, self.name).to(self.device)
+        self.brain = QNet([83, 256, 128, 128, 256, 6], self.agent_name, self.name).to(self.device)
         self.trainer = self.Qtrainer(self.brain, self.lr, self.gamma)
 
         if self.brain.load():
