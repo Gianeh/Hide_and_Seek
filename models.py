@@ -215,7 +215,7 @@ class QTrainer_beta_1:
         # 1: predicted Q values with current state
         pred = self.model(state)
 
-        target = pred.clone()
+        target = pred.detach().clone()
 
         for idx in range(len(done)):
             Q_new = reward[idx]
@@ -225,7 +225,7 @@ class QTrainer_beta_1:
             target[idx][torch.argmax(action[idx]).item()] = Q_new
 
         self.optimizer.zero_grad()
-        loss = self.criterion(target, pred)
+        loss = self.criterion(pred, target)
         loss.backward()
 
         self.optimizer.step()

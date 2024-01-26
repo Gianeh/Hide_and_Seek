@@ -243,6 +243,8 @@ class Game:
                 if other.seen >= wintime:
                     reward -= 100
                     print("Hider loses!")
+                else:
+                    reward += 0.2
                 
                 if not valid_action:
                     reward -= 1

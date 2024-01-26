@@ -30,7 +30,8 @@ def main():
     hider = Agent_alpha_6('hider', lr=0.0005, batch_size=2000,max_memory=1000000, eps_dec=2e-4, eps_min=0.15)
     seeker = Agent_alpha_6('seeker', lr=0.0005, batch_size=2000,max_memory=1000000, eps_dec=2e-4, eps_min=0.15)
 
-    seeker_rewards, eps_history = [], []
+    seeker_rewards, seeker_eps_history = [], []
+    hider_rewards, hider_eps_history = [], []
 
     frames = 0
     framerate = 60
@@ -79,7 +80,6 @@ def main():
             valid_action = game.control_player(game.players[0], hider_action)
             hider_reward = game.reward(game.players[0], valid_action, WINTIME, criterion="explore")
             hider_new_state = hider.get_state(game, game.players[0])
-            #hider.train()
             hider.remember(hider_state, hider_action, hider_reward, hider_new_state, gameover)
 
         if not frames % 2 and seek:
@@ -89,7 +89,6 @@ def main():
             valid_action = game.control_player(game.players[1], seeker_action)
             seeker_reward = game.reward(game.players[1], valid_action, WINTIME, criterion="explore")
             seeker_new_state = seeker.get_state(game, game.players[1])
-            #seeker.train()
             seeker.remember(seeker_state, seeker_action, seeker_reward, seeker_new_state, gameover)
 
         frames += 1
@@ -144,19 +143,30 @@ def main():
             if hide: hider.train()
             if seek: seeker.train()
 
-            seeker_rewards.append(game.players[1].reward)
-            eps_history.append(seeker.epsilon)
-            avg_reward = np.mean(seeker_rewards[-100:])
-            print('Game: ', seeker.n_games, ' Seeker reward %.2f' % game.players[1].reward, 'average reward %.2f' % avg_reward, 'epsilon %.2f' % seeker.epsilon)
 
             hider.n_games += 1
             seeker.n_games += 1
 
-            #filename = 'alpha6.png'
-            filename = seeker.agent_name+'.png'
-            if seeker.n_games % 50 == 0:
+            seeker_rewards.append(game.players[1].reward)
+            seeker_eps_history.append(seeker.epsilon)
+            seeker_avg_reward = np.mean(seeker_rewards[-100:])
+            print('Game: ', seeker.n_games, ' Seeker reward %.2f' % game.players[1].reward, 'average reward %.2f' % seeker_avg_reward, 'epsilon %.2f' % seeker.epsilon)
+
+            seeker_filename = 'seeker_'+seeker.agent_name+'.png'
+            if seeker.n_games % 50 == 0 and seeker.n_games != 0:
                 x = [i + 1 for i in range(seeker.n_games)]
-                plot_learning_curve(x, seeker_rewards, eps_history, filename)
+                plot_learning_curve(x, seeker_rewards, seeker_eps_history, seeker_filename)
+
+            
+            hider_rewards.append(game.players[0].reward)
+            hider_eps_history.append(seeker.epsilon)
+            hider_avg_reward = np.mean(hider_rewards[-100:])
+            print('Game: ', hider.n_games, ' Hider reward %.2f' % game.players[0].reward, 'average reward %.2f' % hider_avg_reward, 'epsilon %.2f' % seeker.epsilon)
+
+            hider_filename = 'hider_'+seeker.agent_name+'.png'
+            if hider.n_games % 50 == 0 and hider.n_games != 0:
+                x = [i + 1 for i in range(seeker.n_games)]
+                plot_learning_curve(x, hider_rewards, hider_eps_history, hider_filename)
 
 
             game.reset()
