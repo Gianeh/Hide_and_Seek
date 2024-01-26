@@ -30,7 +30,8 @@ def main():
     hider = Agent_alpha_6('hider', epsilon=0.1)
     seeker = Agent_alpha_6('seeker', epsilon=0.1)
 
-    seeker_rewards, eps_history = [], []
+    seeker_rewards, seeker_eps_history = [], []
+    hider_rewards, hider_eps_history = [], []
 
     frames = 0
     framerate = 60
@@ -117,15 +118,26 @@ def main():
             seeker.n_games += 1
 
             seeker_rewards.append(game.players[1].reward)
-            eps_history.append(seeker.epsilon)
-            avg_reward = np.mean(seeker_rewards[-100:])
-            print('Game: ', seeker.n_games, ' Seeker reward %.2f' % game.players[1].reward, 'average reward %.2f' % avg_reward, 'epsilon %.2f' % seeker.epsilon)
+            seeker_eps_history.append(seeker.epsilon)
+            seeker_avg_reward = np.mean(seeker_rewards[-100:])
+            print('Game: ', seeker.n_games, ' Seeker reward %.2f' % game.players[1].reward,
+                  'average reward %.2f' % seeker_avg_reward, 'epsilon %.2f' % seeker.epsilon)
 
-            #filename = 'alpha6_play.png'
-            filename = seeker.agent_name+'_play.png'
-            if seeker.n_games % 50 == 0:
+            seeker_filename = 'seeker_' + seeker.agent_name + '_play.png'
+            if seeker.n_games % 50 == 0 and seeker.n_games != 0:
                 x = [i + 1 for i in range(seeker.n_games)]
-                plot_learning_curve(x, seeker_rewards, eps_history, filename)
+                plot_learning_curve(x, seeker_rewards, seeker_eps_history, seeker_filename)
+
+            hider_rewards.append(game.players[0].reward)
+            hider_eps_history.append(seeker.epsilon)
+            hider_avg_reward = np.mean(hider_rewards[-100:])
+            print('Game: ', hider.n_games, ' Hider reward %.2f' % game.players[0].reward,
+                  'average reward %.2f' % hider_avg_reward, 'epsilon %.2f' % seeker.epsilon)
+
+            hider_filename = 'hider_' + seeker.agent_name + '_play.png'
+            if hider.n_games % 50 == 0 and hider.n_games != 0:
+                x = [i + 1 for i in range(seeker.n_games)]
+                plot_learning_curve(x, hider_rewards, hider_eps_history, hider_filename)
 
 
             game.reset()
