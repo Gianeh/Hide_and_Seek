@@ -109,6 +109,15 @@ def main():
 
         if gameover or stop:
 
+            # log some info about generation
+            print("*" * 50)
+            print(f"Generation: {seeker.n_games}")
+            print(f"Exploring and Exploiting with Epsilon: {seeker.epsilon}")
+            print(f"\033[94mSeeker Reward: {game.players[1].reward}\033[0m")
+            print(f"\033[92mHider Reward: {game.players[0].reward}\033[0m")
+
+
+
             if frames % 2:
                 hider_reward = game.reward(game.players[0], valid_action, WINTIME, criterion="explore")
                 hider_state = hider.get_state(game, game.players[0])
@@ -119,13 +128,6 @@ def main():
                 seeker_state = seeker.get_state(game, game.players[1])
                 seeker.remember(seeker_state, [0,0,0,0,0,1], seeker_reward, seeker_state, gameover or stop)
                 
-
-            # log some info about generation
-            print("*" * 50)
-            print(f"Generation: {seeker.n_games}")
-            print(f"Exploring and Exploiting with Epsilon: {seeker.epsilon}")
-            print(f"\033[94mSeeker Reward: {game.players[1].reward}\033[0m")
-            print(f"\033[92mHider Reward: {game.players[0].reward}\033[0m")
 
             hider_file_path = "./" + hider.agent_name + "/reward/reward_" + hider.name + ".txt"
             if not os.path.exists("./" + hider.agent_name + "/reward"):
