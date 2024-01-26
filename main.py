@@ -79,7 +79,7 @@ def main():
             hider_reward = game.reward(game.players[0], valid_action, WINTIME, criterion="explore")
             hider_new_state = hider.get_state(game, game.players[0])
             hider.train_short_memory(hider_state, hider_action, hider_reward, hider_new_state, gameover)
-            #hider.remember(hider_state, hider_action, hider_reward, hider_new_state, gameover)
+            hider.remember(hider_state, hider_action, hider_reward, hider_new_state, gameover)
         
         if not frames % 2 and seek:
             game.players[1].look()
@@ -89,7 +89,7 @@ def main():
             seeker_reward = game.reward(game.players[1], valid_action, WINTIME, criterion="explore")
             seeker_new_state = seeker.get_state(game, game.players[1])
             seeker.train_short_memory(seeker_state, seeker_action, seeker_reward, seeker_new_state, gameover)
-            #seeker.remember(seeker_state, seeker_action, seeker_reward, seeker_new_state, gameover)
+            seeker.remember(seeker_state, seeker_action, seeker_reward, seeker_new_state, gameover)
 
         frames += 1
 
