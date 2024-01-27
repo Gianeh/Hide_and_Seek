@@ -161,13 +161,13 @@ def main():
 
             
             hider_rewards.append(game.players[0].reward)
-            hider_eps_history.append(seeker.epsilon)
+            hider_eps_history.append(hider.epsilon)
             hider_avg_reward = np.mean(hider_rewards[-100:])
-            print('Game: ', hider.n_games, ' Hider reward %.2f' % game.players[0].reward, 'average reward %.2f' % hider_avg_reward, 'epsilon %.2f' % seeker.epsilon)
+            print('Game: ', hider.n_games, ' Hider reward %.2f' % game.players[0].reward, 'average reward %.2f' % hider_avg_reward, 'epsilon %.2f' % hider.epsilon)
 
-            hider_filename = 'hider_'+seeker.agent_name+'.png'
+            hider_filename = 'hider_'+hider.agent_name+'.png'
             if hider.n_games % 50 == 0 and hider.n_games != 0:
-                x = [i + 1 for i in range(seeker.n_games)]
+                x = [i + 1 for i in range(hider.n_games)]
                 plot_learning_curve(x, hider_rewards, hider_eps_history, hider_filename)
 
 
