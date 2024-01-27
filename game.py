@@ -244,7 +244,8 @@ class Game:
                     reward -= 100
                     print("Hider loses!")
                 else:
-                    reward += 0.2
+                    #reward += 0.2
+                    reward += 0.5 if other.seen == 0 else 0     #try to avoid being in seeker view
                 
                 if not valid_action:
                     reward -= 1
@@ -284,7 +285,8 @@ class Game:
                     reward -= 100
                     print("Hider loses!")
                 
-                reward -= 1/distance if distance != 0 else 0
+                #reward -= 1/distance if distance != 0 else 0
+                reward += distance/10 if distance > 5.0 else 0      #min distance radius = 5 to get a reward score (try to maintain min distance from seeker)
 
                 if not valid_action:
                     reward -= 1
