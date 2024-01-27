@@ -114,6 +114,18 @@ def main():
             print(f"\033[94mSeeker Reward: {game.players[1].reward}\033[0m")
             print(f"\033[92mHider Reward: {game.players[0].reward}\033[0m")
 
+
+            if frames % 2:
+                hider_reward = game.reward(game.players[0], valid_action, WINTIME, criterion="explore")
+                hider_state = hider.get_state(game, game.players[0])
+                hider.remember(hider_state, [0,0,0,0,0,1], hider_reward, hider_state, gameover or stop)
+
+            if not frames % 2:
+                seeker_reward = game.reward(game.players[1], valid_action, WINTIME, criterion="explore")
+                seeker_state = seeker.get_state(game, game.players[1])
+                seeker.remember(seeker_state, [0,0,0,0,0,1], seeker_reward, seeker_state, gameover or stop)
+
+
             hider.n_games += 1
             seeker.n_games += 1
 
