@@ -178,6 +178,8 @@ class QTrainer_beta_1:
 
     def train_step(self, state, action, reward, next_state, done):
 
+        self.model.train()    #<--- Test: train mode (should not affect the training phase)
+
         self.train_steps += 1
 
         if self.train_steps == self.update_steps:
