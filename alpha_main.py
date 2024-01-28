@@ -2,11 +2,11 @@ import numpy as np
 import pygame as pg
 from game import Game
 from agent import Agent_alpha_6, Agent_alpha_7
-from models import QTrainer_beta_1
+from models import QTrainer_beta_1, QTrainer
 import sys
 import argparse
 import os
-from util import plot_learning_curve
+from util import plot_learning_curve, write_config
 
 WHITE = (255, 255, 255)
 BLACK = (0, 0, 0)
@@ -30,6 +30,19 @@ def main():
     game = Game(26, 25, 40)
     hider = Agent_alpha_7('hider', lr=0.0005, batch_size=2000,max_memory=1000000, eps_dec=2e-4, eps_min=0.15)
     seeker = Agent_alpha_7('seeker', lr=0.0005, batch_size=2000,max_memory=1000000, eps_dec=2e-4, eps_min=0.15)
+    hider_trainer = ""
+    if hider.Qtrainer == QTrainer:
+        hider_trainer = "Qtrainer"
+    elif hider.Qtrainer == QTrainer_beta_1:
+        hider_trainer = "QTrainer_beta_1"
+    write_config(hider.agent_name, hider.name, hider_trainer, hider.lr, hider.batch_size, hider.max_memory, hider.epsilon, hider.eps_dec, hider.eps_min, hider.brain.layer_list)
+
+    seeker_trainer = ""
+    if seeker.Qtrainer == QTrainer:
+        seeker_trainer = "Qtrainer"
+    elif seeker.Qtrainer == QTrainer_beta_1:
+        seeker_trainer = "QTrainer_beta_1"
+    write_config(seeker.agent_name, seeker.name, seeker_trainer, seeker.lr, seeker.batch_size, seeker.max_memory, seeker.epsilon, seeker.eps_dec, seeker.eps_min, seeker.brain.layer_list)
 
     seeker_rewards, seeker_eps_history = [], []
     hider_rewards, hider_eps_history = [], []

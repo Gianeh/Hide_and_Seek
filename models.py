@@ -9,7 +9,7 @@ import os
 class QNet(nn.Module):
     def __init__(self, layers, agent_name, name='model'):
         super().__init__()
-
+        self.layer_list = layers
         self.agent_name = agent_name
         self.name = name
         self.layers = nn.ModuleList()

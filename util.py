@@ -1,5 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
+import os
 
 
 def plot_learning_curve(x, scores, epsilons, filename, agent_name):
@@ -26,3 +27,25 @@ def plot_learning_curve(x, scores, epsilons, filename, agent_name):
     ax2.tick_params(axis='y', colors="C1")
 
     plt.savefig("./"+agent_name+"/"+filename)
+
+
+def write_config(agent_name, player_name, trainer, lr, batch_size, max_memory, eps, eps_dec, eps_min, layers):
+    file_name = agent_name+'_'+player_name+'_config.txt'
+    path = './'+agent_name+'/'+file_name
+    if not os.path.exists("./"+agent_name):
+        os.makedirs("./"+agent_name)
+    with open(path, 'w') as f:
+        f.write("Agent name: "+agent_name+"\n")
+        f.write("Player name: "+player_name+"\n")
+        f.write("Trainer: "+trainer+"\n")
+        f.write("Learning rate: "+str(lr)+"\n")
+        f.write("Batch size: "+str(batch_size)+"\n")
+        f.write("Max memory size: "+str(max_memory)+"\n")
+        f.write("Epsilon: "+str(eps)+"\n")
+        f.write("Epsilon decrement: "+str(eps_dec)+"\n")
+        f.write("Minimum epsilon: "+str(eps_min)+"\n")
+        f.write("Network layers: ")
+        for layer in layers:
+            f.write(str(layer)+" ")
+
+ 
