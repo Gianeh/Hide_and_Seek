@@ -1,7 +1,7 @@
 import numpy as np
 import pygame as pg
 from game import Game
-from agent import Agent_alpha_6
+from agent import Agent_alpha_6, Agent_alpha_7
 from models import QTrainer_beta_1
 import sys
 import argparse
@@ -27,8 +27,8 @@ def main():
 
     # Instantiate Game and Agents
     game = Game(26, 25, 40)
-    hider = Agent_alpha_6('hider', lr=0.0005, batch_size=2000,max_memory=1000000, eps_dec=2e-4, eps_min=0.15)
-    seeker = Agent_alpha_6('seeker', lr=0.0005, batch_size=2000,max_memory=1000000, eps_dec=2e-4, eps_min=0.15)
+    hider = Agent_alpha_7('hider', lr=0.0005, batch_size=2000,max_memory=1000000, eps_dec=2e-4, eps_min=0.15)
+    seeker = Agent_alpha_7('seeker', lr=0.0005, batch_size=2000,max_memory=1000000, eps_dec=2e-4, eps_min=0.15)
 
     seeker_rewards, seeker_eps_history = [], []
     hider_rewards, hider_eps_history = [], []
@@ -157,7 +157,7 @@ def main():
             seeker_filename = 'seeker_'+seeker.agent_name+'.png'
             if seeker.n_games % 50 == 0 and seeker.n_games != 0:
                 x = [i + 1 for i in range(seeker.n_games)]
-                plot_learning_curve(x, seeker_rewards, seeker_eps_history, seeker_filename)
+                plot_learning_curve(x, seeker_rewards, seeker_eps_history, seeker_filename, seeker.agent_name)
 
             
             hider_rewards.append(game.players[0].reward)
@@ -168,7 +168,7 @@ def main():
             hider_filename = 'hider_'+hider.agent_name+'.png'
             if hider.n_games % 50 == 0 and hider.n_games != 0:
                 x = [i + 1 for i in range(hider.n_games)]
-                plot_learning_curve(x, hider_rewards, hider_eps_history, hider_filename)
+                plot_learning_curve(x, hider_rewards, hider_eps_history, hider_filename, hider.agent_name)
 
 
             game.reset()

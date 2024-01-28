@@ -138,7 +138,7 @@ def main():
             seeker_filename = 'seeker_' + seeker.agent_name + '_play.png'
             if seeker.n_games % 50 == 0 and seeker.n_games != 0:
                 x = [i + 1 for i in range(seeker.n_games)]
-                plot_learning_curve(x, seeker_rewards, seeker_eps_history, seeker_filename)
+                plot_learning_curve(x, seeker_rewards, seeker_eps_history, seeker_filename, seeker.agent_name)
 
             hider_rewards.append(game.players[0].reward)
             hider_eps_history.append(hider.epsilon)
@@ -149,7 +149,7 @@ def main():
             hider_filename = 'hider_' + hider.agent_name + '_play.png'
             if hider.n_games % 50 == 0 and hider.n_games != 0:
                 x = [i + 1 for i in range(hider.n_games)]
-                plot_learning_curve(x, hider_rewards, hider_eps_history, hider_filename)
+                plot_learning_curve(x, hider_rewards, hider_eps_history, hider_filename, hider.agent_name)
 
 
             game.reset()
