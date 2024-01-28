@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 import os
 
 
-def plot_learning_curve(x, scores, epsilons, filename, agent_name):
+def plot_learning_curve(x, scores, epsilons, filename, agent_name, player_type):
     fig = plt.figure()
     ax = fig.add_subplot(111, label="1")
     ax2 = fig.add_subplot(111, label="2", frame_on=False)
@@ -22,18 +22,21 @@ def plot_learning_curve(x, scores, epsilons, filename, agent_name):
     ax2.scatter(x, running_avg, color = "C1")
     ax2.axes.get_xaxis().set_visible(False)
     ax2.yaxis.tick_right()
-    ax2.set_ylabel('Avg Reward', color="C1")
+    ax2.set_ylabel('Avg '+str(player_type)+' Reward', color="C1")
     ax2.yaxis.set_label_position('right')
     ax2.tick_params(axis='y', colors="C1")
 
-    plt.savefig("./"+agent_name+"/"+filename)
+    if not os.path.exists("./"+agent_name+"/train_plots"):
+        os.makedirs("./"+agent_name+"/train_plots")
+
+    plt.savefig("./"+agent_name+"/train_plots/"+filename)
 
 
 def write_config(agent_name, player_name, trainer, lr, batch_size, max_memory, eps, eps_dec, eps_min, layers):
     file_name = agent_name+'_'+player_name+'_config.txt'
-    path = './'+agent_name+'/'+file_name
-    if not os.path.exists("./"+agent_name):
-        os.makedirs("./"+agent_name)
+    path = './'+agent_name+'/config/'+file_name
+    if not os.path.exists("./"+agent_name+'/config'):
+        os.makedirs("./"+agent_name+'/config')
     with open(path, 'w') as f:
         f.write("Agent name: "+agent_name+"\n")
         f.write("Player name: "+player_name+"\n")

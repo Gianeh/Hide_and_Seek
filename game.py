@@ -394,6 +394,7 @@ class Game:
             return True
         else:
             return False
+        
     # a function that logs the obj_type of pointed cell
     def log_cell(self):
         pos = pg.mouse.get_pos()

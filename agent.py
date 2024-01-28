@@ -1809,3 +1809,121 @@ class Agent_alpha_7:
 
     def decrement_epsilon(self):
         self.epsilon = self.epsilon - self.eps_dec if self.epsilon > self.eps_min else self.eps_min
+
+
+
+class Agent_alpha_8:
+    def __init__(self, name='model', Qtrainer=QTrainer_beta_1, lr=0.001, batch_size=1000, max_memory=100000, epsilon = 1.0, eps_dec= 5e-4, eps_min = 0.05):
+        self.agent_name = "alpha_8"
+        self.name = name
+        self.Qtrainer = Qtrainer
+        self.lr = lr
+        self.batch_size = batch_size
+        self.max_memory = max_memory
+        self.n_games = 0
+        self.epsilon = epsilon
+        self.eps_dec = eps_dec
+        self.eps_min = eps_min
+        self.gamma = 0.9  # discount rate
+        self.memory = deque(maxlen=self.max_memory)  # automatic popleft()
+        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        self.brain = QNet([64, 256, 128, 64, 32, 6], self.agent_name, self.name).to(self.device)
+        self.trainer = self.Qtrainer(self.brain, self.lr, self.gamma)
+
+        if self.brain.load():
+            print("Model loaded")
+
+        print(f"AGENT ALPHA 8: training {self.name} with {self.device} device")
+
+
+    def get_state(self, game, player):
+        start = time.time()
+        x = player.x
+        y = player.y
+        i = y // player.size
+        j = x // player.size
+
+        other_player = game.players[0] if player.obj_type == 'seeker' else game.players[1]
+        other_player_i = other_player.y // other_player.size
+        other_player_j = other_player.x // other_player.size
+
+        objects = {'wall': '100000', 'floor': '010000', 'hider': '001000', 'movable_wall': '000100', 'seeker': '000010', 'map_edge': '000001'}
+
+        #av = {'sx': False, 'dx': False, 'u':False, 'd':False}
+        av = game.check_available_positions(player)
+        av_pos = [int(av['u']), int(av['dx']), int(av['d']), int(av['sx'])]
+
+        lidar = player.lidar
+        lidar_data = []
+        for elem in range(len(lidar)):
+            for n in objects[lidar[elem][0]]:
+                lidar_data.append(int(n))
+            lidar_data.append(lidar[elem][1])
+
+
+        state = [i,j] + av_pos + lidar_data + [other_player_i, other_player_j]
+
+        return state
+
+
+    def get_action(self, state):
+        # tradeoff exploration / exploitation
+        final_action = [0, 0, 0, 0, 0, 0]
+        if np.random.random() > self.epsilon:
+            state = np.array(state)
+            current_state = torch.tensor(state, dtype=torch.float).to(self.device)
+            prediction = self.brain(current_state)
+            action = torch.argmax(prediction).item()
+            final_action[action] = 1
+        else:
+            if self.epsilon < 0.7:
+                action = random.randint(0, 5)     #second exploration phase (eps < 0.7) experiment all controls 
+            else:
+                action = random.randint(0, 3)     #first explorarion phase (eps=[1.0 - 0.7]) is just moving around the map
+            final_action[action] = 1
+
+        return final_action
+    
+    
+    #method to perform only model prediction in game
+    def perform_action(self, state):
+        # tradeoff exploration / exploitation
+        final_action = [0, 0, 0, 0, 0, 0]
+        
+        state = np.array(state)
+        current_state = torch.tensor(state, dtype=torch.float).to(self.device)
+        prediction = self.brain(current_state)
+        action = torch.argmax(prediction).item()
+        final_action[action] = 1
+
+        return final_action
+
+    def remember(self, state, action, reward, next_state, gameover):
+        self.memory.append((state, action, reward, next_state, gameover))
+
+
+    def train(self):
+        if len(self.memory) < self.batch_size:
+            return
+        else:
+            batch_sample = random.sample(self.memory, self.batch_size)
+
+        states, actions, rewards, next_states, gameovers = zip(*batch_sample)
+        #print('pre : ', type(states), len(states), len(states[0]),'\n')
+
+        # convert to numpy arrays
+        states = np.array(states)
+        actions = np.array(actions)
+        rewards = np.array(rewards)
+        next_states = np.array(next_states)
+        gameovers = np.array(gameovers)
+
+        self.trainer.train_step(states, actions, rewards, next_states, gameovers)
+
+        self.brain.save()
+
+        self.decrement_epsilon()
+
+
+    def decrement_epsilon(self):
+        self.epsilon = self.epsilon - self.eps_dec if self.epsilon > self.eps_min else self.eps_min
