@@ -1,3 +1,4 @@
+import math
 WHITE = (255, 255, 255)
 BLACK = (0, 0, 0)
 BLUE = (0, 0, 255)
@@ -74,6 +75,7 @@ class Player(Cell):
         self.map[i][j] = self
         self.cols = cols
         self.view = [[0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0]]
+        self.lidar = [[] for _ in range(8)]
         self.seen = 0
 
         self.reward = 0
@@ -158,6 +160,138 @@ class Player(Cell):
                     blocked = True
                     continue
                 if blocked: self.view[l][c] = None
+
+
+    def trigger_lidar(self):
+        i = self.y // self.size
+        j = self.x // self.size
+
+        #up direction
+        row = i-1
+        col = j
+        while(row >= 0):
+            if self.map[row][col].obj_type == 'floor':
+                row -= 1
+                continue
+            else:
+                distance = i-row-1
+                self.lidar[0] = [self.map[row][col].obj_type, distance]
+                break
+        if len(self.lidar[0]) == 0:
+            distance = i
+            self.lidar[0] = ['map_edge', distance]
+
+        #up-right direction
+        row = i-1
+        col = j+1
+        cols_num = len(self.map[row])
+        while(row >= 0 and col < cols_num):
+            if self.map[row][col].obj_type == 'floor':
+                row -= 1
+                col += 1
+                continue
+            else:
+                distance = math.sqrt(((i-row-1)**2)+((col-j-1)**2))
+                self.lidar[1] = [self.map[row][col].obj_type, distance]
+                break
+        if len(self.lidar[1]) == 0:
+            distance = math.sqrt((i**2)+((cols_num-j-1)**2))
+            self.lidar[1] = ['map_edge', distance]
+
+        #right direction
+        row = i
+        col = j+1
+        while(col < cols_num):
+            if self.map[row][col].obj_type == 'floor':
+                col += 1
+                continue
+            else:
+                distance = col-j-1
+                self.lidar[2] = [self.map[row][col].obj_type, distance]
+                break
+        if len(self.lidar[2]) == 0:
+            distance = cols_num-j-1
+            self.lidar[2] = ['map_edge', distance]
+
+        #right-down direction
+        row = i+1
+        col = j+1
+        rows_num = len(self.map)
+        while(row < rows_num and col < cols_num):
+            if self.map[row][col].obj_type == 'floor':
+                row += 1
+                col +=1
+                continue
+            else:
+                distance = math.sqrt(((row-i-1)**2)+(col-j-1)**2)
+                self.lidar[3] = [self.map[row][col].obj_type, distance]
+                break
+        if len(self.lidar[3]) == 0:
+            distance = math.sqrt(((rows_num-i-1)**2)+(cols_num-j-1)**2)
+            self.lidar[3] = ['map_edge', distance]
+
+        #down direction
+        row = i+1
+        col = j
+        while(row < rows_num):
+            if self.map[row][col].obj_type == 'floor':
+                row += 1
+                continue
+            else:
+                distance = row-i-1
+                self.lidar[4] = [self.map[row][col].obj_type, distance]
+                break
+        if len(self.lidar[4]) == 0:
+            distance = rows_num-i-1
+            self.lidar[4] = ['map_edge', distance]
+
+        #down-left direction
+        row = i+1
+        col = j-1
+        while(row < rows_num and col >= 0):
+            if self.map[row][col].obj_type == 'floor':
+                row += 1
+                col -=1
+                continue
+            else:
+                distance = math.sqrt(((row-i-1)**2)+(j-col-1)**2)
+                self.lidar[5] = [self.map[row][col].obj_type, distance]
+                break
+        if len(self.lidar[5]) == 0:
+            distance = math.sqrt(((rows_num-i-1)**2)+(j)**2)
+            self.lidar[5] = ['map_edge', distance]
+
+        #left direction
+        row = i
+        col = j-1
+        while(col >= 0):
+            if self.map[row][col].obj_type == 'floor':
+                col -= 1
+                continue
+            else:
+                distance = j-col-1
+                self.lidar[6] = [self.map[row][col].obj_type, distance]
+                break
+        if len(self.lidar[6]) == 0:
+            distance = j
+            self.lidar[6] = ['map_edge', distance]
+
+        #left-up direction
+        row = i-1
+        col = j-1
+        while(row >= 0 and col >= 0):
+            if self.map[row][col].obj_type == 'floor':
+                row -= 1
+                col -= 1
+                continue
+            else:
+                distance = math.sqrt(((i-row-1)**2)+((j-col-1)**2))
+                self.lidar[7] = [self.map[row][col].obj_type, distance]
+                break
+        if len(self.lidar[7]) == 0:
+            distance = math.sqrt((i**2)+(j**2))
+            self.lidar[7] = ['map_edge', distance]
+            
 
 
 

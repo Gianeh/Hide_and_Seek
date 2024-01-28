@@ -22,6 +22,7 @@ def main():
     parser.add_argument('--seek', action='store_true', help='train the seeker')
     args = parser.parse_args()
 
+
     hide = args.hide
     seek = args.seek
 
@@ -75,6 +76,7 @@ def main():
 
         if frames % 2 and hide:
             game.players[0].look()
+            game.players[0].trigger_lidar()
             hider_state = hider.get_state(game, game.players[0])
             hider_action = hider.get_action(hider_state)
             valid_action = game.control_player(game.players[0], hider_action)
@@ -84,6 +86,7 @@ def main():
 
         if not frames % 2 and seek:
             game.players[1].look()
+            game.players[1].trigger_lidar()
             seeker_state = seeker.get_state(game, game.players[1])
             seeker_action = seeker.get_action(seeker_state)
             valid_action = game.control_player(game.players[1], seeker_action)
