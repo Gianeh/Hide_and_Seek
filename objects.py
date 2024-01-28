@@ -76,6 +76,7 @@ class Player(Cell):
         self.cols = cols
         self.view = [[0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0]]
         self.lidar = [[] for _ in range(8)]
+        self.lidar_view = []
         self.seen = 0
 
         self.reward = 0
@@ -165,12 +166,13 @@ class Player(Cell):
     def trigger_lidar(self):
         i = self.y // self.size
         j = self.x // self.size
-
+        self.lidar_view = []
         #up direction
         row = i-1
         col = j
         while(row >= 0):
             if self.map[row][col].obj_type == 'floor':
+                self.lidar_view.append(self.map[row][col])
                 row -= 1
                 continue
             else:
@@ -187,6 +189,7 @@ class Player(Cell):
         cols_num = len(self.map[row])
         while(row >= 0 and col < cols_num):
             if self.map[row][col].obj_type == 'floor':
+                self.lidar_view.append(self.map[row][col])
                 row -= 1
                 col += 1
                 continue
@@ -203,6 +206,7 @@ class Player(Cell):
         col = j+1
         while(col < cols_num):
             if self.map[row][col].obj_type == 'floor':
+                self.lidar_view.append(self.map[row][col])
                 col += 1
                 continue
             else:
@@ -219,6 +223,7 @@ class Player(Cell):
         rows_num = len(self.map)
         while(row < rows_num and col < cols_num):
             if self.map[row][col].obj_type == 'floor':
+                self.lidar_view.append(self.map[row][col])
                 row += 1
                 col +=1
                 continue
@@ -235,6 +240,7 @@ class Player(Cell):
         col = j
         while(row < rows_num):
             if self.map[row][col].obj_type == 'floor':
+                self.lidar_view.append(self.map[row][col])
                 row += 1
                 continue
             else:
@@ -250,6 +256,7 @@ class Player(Cell):
         col = j-1
         while(row < rows_num and col >= 0):
             if self.map[row][col].obj_type == 'floor':
+                self.lidar_view.append(self.map[row][col])
                 row += 1
                 col -=1
                 continue
@@ -266,6 +273,7 @@ class Player(Cell):
         col = j-1
         while(col >= 0):
             if self.map[row][col].obj_type == 'floor':
+                self.lidar_view.append(self.map[row][col])
                 col -= 1
                 continue
             else:
@@ -281,6 +289,7 @@ class Player(Cell):
         col = j-1
         while(row >= 0 and col >= 0):
             if self.map[row][col].obj_type == 'floor':
+                self.lidar_view.append(self.map[row][col])
                 row -= 1
                 col -= 1
                 continue
