@@ -107,6 +107,7 @@ class Game:
         self.draw_map()
         self.draw_players_view()
         self.draw_players()
+        self.draw_scores()
         
 
     def draw_map(self):
@@ -146,6 +147,16 @@ class Game:
                 self.screen.blit(self.hider, (p.x, p.y))
             else:
                 self.screen.blit(self.seeker, (p.x, p.y))
+
+    def draw_scores(self):
+        font = pg.font.Font(None, 36)
+        hider_reward = font.render(f"Hider reward: {self.players[0].reward:.3f}", True, (255,0,0))
+        seeker_reward = font.render(f"Seeker reward: {self.players[1].reward:.3f}", True, (255,0,0))
+        fps = int(self.clock.get_fps())
+        frame_rate = font.render(f"Fps: {fps}", True, (255,0,0))
+        self.screen.blit(hider_reward, (0, 0))
+        self.screen.blit(seeker_reward, (0, 20))
+        self.screen.blit(frame_rate, (0, 40))
     
     def control_player(self, player, action):
         available_positions = self.check_available_positions(player)
