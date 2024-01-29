@@ -297,7 +297,7 @@ class Game:
                     print("Hider loses!")
                 
                 #reward -= 1/distance if distance != 0 else 0
-                reward += distance/100 if distance > 5.0 else 0      #min distance radius = 5 to get a reward score (try to maintain min distance from seeker)
+                reward += distance/50 if distance > 3.0 else 0      #min distance radius = 3 to get a reward score (try to maintain min distance from seeker)
 
                 if not valid_action:
                     reward -= 1
