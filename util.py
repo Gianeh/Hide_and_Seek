@@ -18,8 +18,7 @@ def plot_learning_curve(x, scores, epsilons, filename, agent_name, player_type):
     running_avg = np.empty(N)
     for t in range(N):
         running_avg[t] = np.mean(scores[max(0, t-100):(t+1)])       #avg over 100 games if n_games > 100 else avg over n_games
-    scatter_size = [20 for i in range(N)]
-    ax2.scatter(x, scatter_size,running_avg, color = "C1")
+    ax2.scatter(x,running_avg, color = "C1", s=20)
     ax2.axes.get_xaxis().set_visible(False)
     ax2.yaxis.tick_right()
     ax2.set_ylabel('Avg '+str(player_type)+' Reward', color="C1")

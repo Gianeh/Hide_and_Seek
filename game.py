@@ -157,10 +157,10 @@ class Game:
 
     def draw_scores(self):
         font = pg.font.Font(None, 36)
-        hider_reward = font.render(f"Hider reward: {self.players[0].reward:.3f}", True, (255,0,0))
-        seeker_reward = font.render(f"Seeker reward: {self.players[1].reward:.3f}", True, (255,0,0))
+        hider_reward = font.render(f"Hider reward: {self.players[0].reward:.3f}", True, (0,0,0))
+        seeker_reward = font.render(f"Seeker reward: {self.players[1].reward:.3f}", True, (0,0,0))
         fps = int(self.clock.get_fps())
-        frame_rate = font.render(f"Fps: {fps}", True, (255,0,0))
+        frame_rate = font.render(f"Fps: {fps}", True, (0,0,0))
         self.screen.blit(hider_reward, (0, 0))
         self.screen.blit(seeker_reward, (0, 20))
         self.screen.blit(frame_rate, (0, 40))

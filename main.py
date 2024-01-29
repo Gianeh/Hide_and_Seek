@@ -1,5 +1,6 @@
 # Hide and Seek in a grid!
 import pygame as pg
+import numpy as np
 from game import Game
 from agent import Agent_alpha_0, Agent_alpha_1, Agent_alpha_2, Agent_alpha_3, Agent_hivemind_0
 from models import QTrainer, QTrainer_beta_1
@@ -29,6 +30,23 @@ def main():
     game = Game(26, 25, 40)
     hider = Agent_alpha_0('hider', QTrainer_beta_1, 0.001, 1000, 5000)
     seeker = Agent_alpha_0('seeker',QTrainer_beta_1, 0.001, 1000, 5000)
+
+
+    hider_trainer = ""
+    if hider.Qtrainer == QTrainer:
+        hider_trainer = "Qtrainer"
+    elif hider.Qtrainer == QTrainer_beta_1:
+        hider_trainer = "QTrainer_beta_1"
+    hider_reward_criterion = 'explore'
+    write_config(hider.agent_name, hider.name, hider_trainer, hider.lr, hider.batch_size, hider.max_memory, hider.randomness, 'Games Number', '0', hider.brain.layer_list, hider_reward_criterion)
+
+    seeker_trainer = ""
+    if seeker.Qtrainer == QTrainer:
+        seeker_trainer = "Qtrainer"
+    elif seeker.Qtrainer == QTrainer_beta_1:
+        seeker_trainer = "QTrainer_beta_1"
+    seeker_reward_criterion = 'explore'
+    write_config(seeker.agent_name, seeker.name, seeker_trainer, seeker.lr, seeker.batch_size, seeker.max_memory, seeker.randomness, 'Games Number', '0', seeker.brain.layer_list, seeker_reward_criterion)
 
     seeker_rewards, seeker_eps_history = [], []
     hider_rewards, hider_eps_history = [], []
@@ -124,12 +142,12 @@ def main():
             if frames % 2:
                 hider_reward = game.reward(game.players[0], valid_action, WINTIME, criterion="explore")
                 hider_state = hider.get_state(game, game.players[0])
-                hider.remember(hider_state, [0,0,0,0,0,1], hider_reward, hider_state, gameover or stop)
+                hider.remember(hider_state, [0,0,0,0,0], hider_reward, hider_state, gameover or stop)
 
             if not frames % 2:
                 seeker_reward = game.reward(game.players[1], valid_action, WINTIME, criterion="explore")
                 seeker_state = seeker.get_state(game, game.players[1])
-                seeker.remember(seeker_state, [0,0,0,0,0,1], seeker_reward, seeker_state, gameover or stop)
+                seeker.remember(seeker_state, [0,0,0,0,0], seeker_reward, seeker_state, gameover or stop)
 
 
 
@@ -144,6 +162,11 @@ def main():
                 os.makedirs("./"+seeker.agent_name+"/reward")
             with open(seeker_file_path, "a") as f:
                 f.write(str(game.players[1].reward) + ";")
+
+            hider.n_games += 1
+            if hide: hider.train_long_memory()
+            seeker.n_games += 1
+            if seek: seeker.train_long_memory()
 
 
             seeker_rewards.append(game.players[1].reward)
@@ -167,15 +190,6 @@ def main():
                 x = [i + 1 for i in range(hider.n_games)]
                 plot_learning_curve(x, hider_rewards, hider_eps_history, hider_filename, hider.agent_name, 'Hider')
 
-
-            game.reset()
-            frames = 0
-            gameover = False
-            stop = False
-            hider.n_games += 1
-            if hide: hider.train_long_memory()
-            seeker.n_games += 1
-            if seek: seeker.train_long_memory()
             
             if (hider.n_games % 20 == 0 or seeker.n_games % 20 == 0) and (hider.n_games != 0 and seeker.n_games != 0):
                 if hide : hider.train_replay("reward")
@@ -188,6 +202,13 @@ def main():
             if (hider.n_games % 30 == 0 or seeker.n_games % 30 == 0) and (hider.n_games != 0 and seeker.n_games != 0):
                 if hide : hider.clean_memory(duplicates=5)
                 if seek : seeker.clean_memory(duplicates=5)
+
+
+            game.reset()
+            frames = 0
+            gameover = False
+            stop = False
+
             
                 
 
