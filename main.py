@@ -37,16 +37,18 @@ def main():
         hider_trainer = "Qtrainer"
     elif hider.Qtrainer == QTrainer_beta_1:
         hider_trainer = "QTrainer_beta_1"
+    hider_eps_dec = "Games Number" if hider.agent_name == "alpha_0" else "Games Number // 3"
     hider_reward_criterion = 'explore'
-    write_config(hider.agent_name, hider.name, hider_trainer, hider.lr, hider.batch_size, hider.max_memory, hider.randomness, 'Games Number', '0', hider.brain.layer_list, hider_reward_criterion)
+    write_config(hider.agent_name, hider.name, hider_trainer, hider.lr, hider.batch_size, hider.max_memory, hider.randomness, hider_eps_dec, '0', hider.brain.layer_list, hider_reward_criterion)
 
     seeker_trainer = ""
     if seeker.Qtrainer == QTrainer:
         seeker_trainer = "Qtrainer"
     elif seeker.Qtrainer == QTrainer_beta_1:
         seeker_trainer = "QTrainer_beta_1"
+    seeker_eps_dec = "Games Number" if seeker.agent_name == "alpha_0" else "Games Number // 3"
     seeker_reward_criterion = 'explore'
-    write_config(seeker.agent_name, seeker.name, seeker_trainer, seeker.lr, seeker.batch_size, seeker.max_memory, seeker.randomness, 'Games Number', '0', seeker.brain.layer_list, seeker_reward_criterion)
+    write_config(seeker.agent_name, seeker.name, seeker_trainer, seeker.lr, seeker.batch_size, seeker.max_memory, seeker.randomness, seeker_eps_dec, '0', seeker.brain.layer_list, seeker_reward_criterion)
 
     seeker_rewards, seeker_eps_history = [], []
     hider_rewards, hider_eps_history = [], []
@@ -142,12 +144,12 @@ def main():
             if frames % 2:
                 hider_reward = game.reward(game.players[0], valid_action, WINTIME, criterion="explore")
                 hider_state = hider.get_state(game, game.players[0])
-                hider.remember(hider_state, [0,0,0,0,0], hider_reward, hider_state, gameover or stop)
+                hider.remember(hider_state, [0 for i in range(hider.brain.layer_list[-1])], hider_reward, hider_state, gameover or stop)
 
             if not frames % 2:
                 seeker_reward = game.reward(game.players[1], valid_action, WINTIME, criterion="explore")
                 seeker_state = seeker.get_state(game, game.players[1])
-                seeker.remember(seeker_state, [0,0,0,0,0], seeker_reward, seeker_state, gameover or stop)
+                seeker.remember(seeker_state, [0 for i in range(seeker.brain.layer_list[-1])], seeker_reward, seeker_state, gameover or stop)
 
 
 
