@@ -31,7 +31,7 @@ def plot_learning_curve(x, scores, epsilons, filename, agent_name, player_type):
     plt.savefig("./"+agent_name+"/train_plots/"+filename)
 
 
-def write_config(agent_name, player_name, trainer, lr, batch_size, max_memory, eps, eps_dec, eps_min, layers, reward_criterion):
+def write_config(agent_name, player_name, map_name, trainer, lr, batch_size, max_memory, eps, eps_dec, eps_min, layers, reward_criterion):
     file_name = agent_name+'_'+player_name+'_config.txt'
     path = './'+agent_name+'/config/'+file_name
     if not os.path.exists("./"+agent_name+'/config'):
@@ -39,6 +39,7 @@ def write_config(agent_name, player_name, trainer, lr, batch_size, max_memory, e
     with open(path, 'w') as f:
         f.write("Agent name: "+agent_name+"\n")
         f.write("Player name: "+player_name+"\n")
+        f.write("Map name: "+map_name+"\n")
         f.write("Reward criterion: "+reward_criterion+"\n")
         f.write("Trainer: "+trainer+"\n")
         f.write("Learning rate: "+str(lr)+"\n")

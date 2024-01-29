@@ -27,10 +27,10 @@ def main():
     seek = args.seek
 
     # Instantiate Game and Agents
-    game = Game(26, 26, 40)
+    map_name = 'map2.txt'
+    game = Game(26, 26, 40, map_name)
     hider = Agent_alpha_3('hider', QTrainer_beta_1, 0.001, 1000, 5000)
     seeker = Agent_alpha_3('seeker',QTrainer_beta_1, 0.001, 1000, 5000)
-
 
     hider_trainer = ""
     if hider.Qtrainer == QTrainer:
@@ -40,7 +40,7 @@ def main():
     hider_eps_dec = "Games Number" if hider.agent_name == "alpha_0" else "Games Number // 3"
     hider_layers = hider.brain.conv_mlp_layers if hider.agent_name == "hivemind_0" else  hider.brain.layer_list
     hider_reward_criterion = 'explore'
-    write_config(hider.agent_name, hider.name, hider_trainer, hider.lr, hider.batch_size, hider.max_memory, hider.randomness, hider_eps_dec, '0', hider_layers, hider_reward_criterion)
+    write_config(hider.agent_name, hider.name, map_name, hider_trainer, hider.lr, hider.batch_size, hider.max_memory, hider.randomness, hider_eps_dec, '0', hider_layers, hider_reward_criterion)
     
 
     seeker_trainer = ""
@@ -51,7 +51,7 @@ def main():
     seeker_eps_dec = "Games Number" if seeker.agent_name == "alpha_0" else "Games Number // 3"
     seeker_layers = hider.brain.conv_mlp_layers if seeker.agent_name == "hivemind_0" else  seeker.brain.layer_list
     seeker_reward_criterion = 'explore'
-    write_config(seeker.agent_name, seeker.name, seeker_trainer, seeker.lr, seeker.batch_size, seeker.max_memory, seeker.randomness, seeker_eps_dec, '0', seeker_layers, seeker_reward_criterion)
+    write_config(seeker.agent_name, seeker.name, map_name, seeker_trainer, seeker.lr, seeker.batch_size, seeker.max_memory, seeker.randomness, seeker_eps_dec, '0', seeker_layers, seeker_reward_criterion)
 
     seeker_rewards, seeker_eps_history = [], []
     hider_rewards, hider_eps_history = [], []

@@ -8,12 +8,13 @@ WHITE = (255, 255, 255)
 BLACK = (0, 0, 0)
 
 class Game:
-    def __init__(self, rows, cols, size):
+    def __init__(self, rows, cols, size, map_name):
         self.rows = rows
         self.cols = cols
         self.size = size
         self.width = cols * size
         self.height = rows * size
+        self.map_name = map_name
         pg.init()                                               #<--------
         pg.display.set_caption('HIDE AND SEEK GAME')            #<--------
         self.screen = pg.display.set_mode((self.width, self.height))
@@ -65,7 +66,7 @@ class Game:
     
     def init_map(self):
         map = []
-        with open('./maps/map2.txt', 'r') as file:
+        with open('./maps/'+self.map_name, 'r') as file:
             matrix = [list(line.strip()) for line in file]
             for row in range(len(matrix)):
                 map.append([])
