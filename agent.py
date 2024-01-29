@@ -10,8 +10,8 @@ import ast # to easily load memory
 import time
 
 #Default parameters for all models
-MAX_MEMORY = 100000
-BATCH_SIZE = 1000
+MAX_MEMORY = 1000000
+BATCH_SIZE = 10000
 LR = 0.0005
 
 

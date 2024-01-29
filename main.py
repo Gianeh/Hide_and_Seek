@@ -27,8 +27,8 @@ def main():
 
     # Instantiate Game and Agents
     game = Game(26, 25, 40)
-    hider = Agent_alpha_3('hider_0021', QTrainer_beta_1, 0.001, 1000, 5000)
-    seeker = Agent_alpha_3('seeker_0021',QTrainer_beta_1, 0.001, 1000, 5000)
+    hider = Agent_alpha_0('hider', QTrainer_beta_1, 0.001, 1000, 5000)
+    seeker = Agent_alpha_0('seeker',QTrainer_beta_1, 0.001, 1000, 5000)
 
     seeker_rewards, seeker_eps_history = [], []
     hider_rewards, hider_eps_history = [], []
