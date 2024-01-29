@@ -803,7 +803,8 @@ class Agent_hivemind_0:
         self.init_memory() # reload all previous memories up to MAX_MEMORY
         self.replay_memory = []
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        self.brain = ConvQNet([[1, 3, 3, 1, 1], [3, 1, 7, 1, 0]], [36, 128, 128, 6], self.agent_name, self.name).to(self.device)
+        #brain designed for a 26x26 map
+        self.brain = ConvQNet([[1, 3, 3, 1, 1], [3, 1, 9, 1, 0], [1, 1, 7, 1, 0], [1, 1, 5, 1, 0]], [64, 128, 128, 6], self.agent_name, self.name).to(self.device)
         self.trainer = self.Qtrainer(self.brain, self.lr, self.gamma, convolutional=True)
 
         if self.brain.load():

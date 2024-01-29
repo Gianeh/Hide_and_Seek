@@ -27,9 +27,9 @@ def main():
     seek = args.seek
 
     # Instantiate Game and Agents
-    game = Game(26, 25, 40)
-    hider = Agent_alpha_2('hider', QTrainer_beta_1, 0.001, 1000, 5000)
-    seeker = Agent_alpha_2('seeker',QTrainer_beta_1, 0.001, 1000, 5000)
+    game = Game(26, 26, 40)
+    hider = Agent_hivemind_0('hider', QTrainer_beta_1, 0.001, 1000, 5000)
+    seeker = Agent_hivemind_0('seeker',QTrainer_beta_1, 0.001, 1000, 5000)
 
 
     hider_trainer = ""
@@ -38,8 +38,10 @@ def main():
     elif hider.Qtrainer == QTrainer_beta_1:
         hider_trainer = "QTrainer_beta_1"
     hider_eps_dec = "Games Number" if hider.agent_name == "alpha_0" else "Games Number // 3"
+    hider_layers = hider.brain.conv_mlp_layers if hider.agent_name == "hivemind_0" else  hider.brain.layer_list
     hider_reward_criterion = 'explore'
-    write_config(hider.agent_name, hider.name, hider_trainer, hider.lr, hider.batch_size, hider.max_memory, hider.randomness, hider_eps_dec, '0', hider.brain.layer_list, hider_reward_criterion)
+    write_config(hider.agent_name, hider.name, hider_trainer, hider.lr, hider.batch_size, hider.max_memory, hider.randomness, hider_eps_dec, '0', hider_layers, hider_reward_criterion)
+    
 
     seeker_trainer = ""
     if seeker.Qtrainer == QTrainer:
@@ -47,8 +49,9 @@ def main():
     elif seeker.Qtrainer == QTrainer_beta_1:
         seeker_trainer = "QTrainer_beta_1"
     seeker_eps_dec = "Games Number" if seeker.agent_name == "alpha_0" else "Games Number // 3"
+    seeker_layers = hider.brain.conv_mlp_layers if seeker.agent_name == "hivemind_0" else  seeker.brain.layer_list
     seeker_reward_criterion = 'explore'
-    write_config(seeker.agent_name, seeker.name, seeker_trainer, seeker.lr, seeker.batch_size, seeker.max_memory, seeker.randomness, seeker_eps_dec, '0', seeker.brain.layer_list, seeker_reward_criterion)
+    write_config(seeker.agent_name, seeker.name, seeker_trainer, seeker.lr, seeker.batch_size, seeker.max_memory, seeker.randomness, seeker_eps_dec, '0', seeker_layers, seeker_reward_criterion)
 
     seeker_rewards, seeker_eps_history = [], []
     hider_rewards, hider_eps_history = [], []

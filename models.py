@@ -40,12 +40,14 @@ class QNet(nn.Module):
         self.load_state_dict(torch.load(path_name))
         return True
 
-class ConvQNet(nn.Module):
+class ConvQNet(nn.Module): 
     # conv_layers = [[n_in_channels, n_out_channels, kernel_size, stride, padding], [n_in_channels, n_out_channels, kernel_size, stride, padding], ...]
     def __init__(self, conv_layers, mlp_layers, agent_name, name='model'):
         super().__init__()
         self.agent_name = agent_name
         self.name = name
+        self.layer_list = mlp_layers
+        self.conv_mlp_layers = conv_layers + mlp_layers
         self.conv_layers = nn.ModuleList()
         for layer in conv_layers:
             self.conv_layers.append(nn.Conv2d(in_channels=layer[0], out_channels=layer[1], kernel_size=layer[2],

@@ -27,7 +27,7 @@ def main():
     seek = args.seek
 
     # Instantiate Game and Agents
-    game = Game(26, 25, 40)
+    game = Game(26, 26, 40)
     hider = Agent_alpha_8('hider', lr=0.0005, batch_size=2000,max_memory=1000000, eps_dec=2e-4, eps_min=0.15)
     seeker = Agent_alpha_8('seeker', lr=0.0005, batch_size=2000,max_memory=1000000, eps_dec=2e-4, eps_min=0.15)
     hider_trainer = ""
