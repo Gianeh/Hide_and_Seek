@@ -28,8 +28,8 @@ def main():
 
     # Instantiate Game and Agents
     game = Game(26, 25, 40)
-    hider = Agent_alpha_0('hider', QTrainer_beta_1, 0.001, 1000, 5000)
-    seeker = Agent_alpha_0('seeker',QTrainer_beta_1, 0.001, 1000, 5000)
+    hider = Agent_alpha_2('hider', QTrainer_beta_1, 0.001, 1000, 5000)
+    seeker = Agent_alpha_2('seeker',QTrainer_beta_1, 0.001, 1000, 5000)
 
 
     hider_trainer = ""

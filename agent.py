@@ -649,12 +649,9 @@ class Agent_alpha_2:
             back = player.map[i][j-1].obj_type if j-1 >= 0 else None
             right = player.map[i+1][j].obj_type if i+1 < game.rows else None
 
-        for n in objects[left]:
-            neighbourhood.append(int(n)/100)
-        for n in objects[back]:
-            neighbourhood.append(int(n)/100)
-        for n in objects[right]:
-            neighbourhood.append(int(n)/100)
+        neighbourhood.append(int(objects[left]))
+        neighbourhood.append(int(objects[back]))
+        neighbourhood.append(int(objects[right]))
         
         # normalize everything
         i = i / game.rows
@@ -662,9 +659,6 @@ class Agent_alpha_2:
         distance = distance / (game.rows + game.cols)
         other_player_i = other_player_i / game.rows
         other_player_j = other_player_j / game.cols
-
-
-            
 
         state = [i,j] + view_vector + neighbourhood + [distance, direction] + [other_player_i, other_player_j]
 
