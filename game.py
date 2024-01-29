@@ -105,7 +105,6 @@ class Game:
 
     def update(self):
         self.draw_map()
-        self.draw_lidar_view()
         self.draw_players_view()
         self.draw_players()
         self.draw_scores()
@@ -148,12 +147,6 @@ class Game:
                 self.screen.blit(self.hider, (p.x, p.y))
             else:
                 self.screen.blit(self.seeker, (p.x, p.y))
-
-    def draw_lidar_view(self):
-        for p in self.players:
-            p.trigger_lidar()
-            for i in range(len(p.lidar_view)):
-                pg.draw.rect(self.screen, (255,140,0), (p.lidar_view[i].x, p.lidar_view[i].y, p.lidar_view[i].size, p.lidar_view[i].size), 25)
 
     def draw_scores(self):
         font = pg.font.Font(None, 36)
@@ -401,7 +394,7 @@ class Game:
             return True
         else:
             return False
-        
+            
     # a function that logs the obj_type of pointed cell
     def log_cell(self):
         pos = pg.mouse.get_pos()
