@@ -35,14 +35,16 @@ def main():
         hider_trainer = "Qtrainer"
     elif hider.Qtrainer == QTrainer_beta_1:
         hider_trainer = "QTrainer_beta_1"
-    write_config(hider.agent_name, hider.name, hider_trainer, hider.lr, hider.batch_size, hider.max_memory, hider.epsilon, hider.eps_dec, hider.eps_min, hider.brain.layer_list)
+    hider_reward_criterion = 'explore2'
+    write_config(hider.agent_name, hider.name, hider_trainer, hider.lr, hider.batch_size, hider.max_memory, hider.epsilon, hider.eps_dec, hider.eps_min, hider.brain.layer_list, hider_reward_criterion)
 
     seeker_trainer = ""
     if seeker.Qtrainer == QTrainer:
         seeker_trainer = "Qtrainer"
     elif seeker.Qtrainer == QTrainer_beta_1:
         seeker_trainer = "QTrainer_beta_1"
-    write_config(seeker.agent_name, seeker.name, seeker_trainer, seeker.lr, seeker.batch_size, seeker.max_memory, seeker.epsilon, seeker.eps_dec, seeker.eps_min, seeker.brain.layer_list)
+    seeker_reward_criterion = 'explore2'
+    write_config(seeker.agent_name, seeker.name, seeker_trainer, seeker.lr, seeker.batch_size, seeker.max_memory, seeker.epsilon, seeker.eps_dec, seeker.eps_min, seeker.brain.layer_list, seeker_reward_criterion)
 
     seeker_rewards, seeker_eps_history = [], []
     hider_rewards, hider_eps_history = [], []
@@ -93,7 +95,7 @@ def main():
             hider_state = hider.get_state(game, game.players[0])
             hider_action = hider.get_action(hider_state)
             valid_action = game.control_player(game.players[0], hider_action)
-            hider_reward = game.reward(game.players[0], valid_action, WINTIME, criterion="distance")
+            hider_reward = game.reward(game.players[0], valid_action, WINTIME, criterion=hider_reward_criterion)
             hider_new_state = hider.get_state(game, game.players[0])
             hider.remember(hider_state, hider_action, hider_reward, hider_new_state, gameover)
 
@@ -103,7 +105,7 @@ def main():
             seeker_state = seeker.get_state(game, game.players[1])
             seeker_action = seeker.get_action(seeker_state)
             valid_action = game.control_player(game.players[1], seeker_action)
-            seeker_reward = game.reward(game.players[1], valid_action, WINTIME, criterion="distance")
+            seeker_reward = game.reward(game.players[1], valid_action, WINTIME, criterion=seeker_reward_criterion)
             seeker_new_state = seeker.get_state(game, game.players[1])
             seeker.remember(seeker_state, seeker_action, seeker_reward, seeker_new_state, gameover)
 
@@ -135,12 +137,12 @@ def main():
 
 
             if frames % 2:
-                hider_reward = game.reward(game.players[0], valid_action, WINTIME, criterion="distance")
+                hider_reward = game.reward(game.players[0], valid_action, WINTIME, criterion=hider_reward_criterion)
                 hider_state = hider.get_state(game, game.players[0])
                 hider.remember(hider_state, [0,0,0,0,0,1], hider_reward, hider_state, gameover or stop)
 
             if not frames % 2:
-                seeker_reward = game.reward(game.players[1], valid_action, WINTIME, criterion="distance")
+                seeker_reward = game.reward(game.players[1], valid_action, WINTIME, criterion=seeker_reward_criterion)
                 seeker_state = seeker.get_state(game, game.players[1])
                 seeker.remember(seeker_state, [0,0,0,0,0,1], seeker_reward, seeker_state, gameover or stop)
                 

@@ -268,6 +268,40 @@ class Game:
                 if not valid_action:
                     reward -= 1
 
+        elif criterion == 'explore2':
+
+            if player.obj_type == 'seeker':
+                player.see()
+                # seeker wins!
+                if player.seen >= wintime:
+                    reward += 10
+                    print("Seeker wins!")
+                    print("Seeker seen: ", player.seen)
+                elif player.seen >= 1:
+                    reward += 10
+                
+                if not valid_action:
+                    reward -= 10
+
+            else: # hider
+                # let hider see
+                player.see()
+
+                other = self.players[1] if player == self.players[0] else self.players[0]
+                # let seeker see
+                other.see()
+
+                if other.seen >= wintime:
+                    reward -= 10
+                    print("Hider loses!")
+                else:
+                    #reward += 0.2
+                    reward += 10 if other.seen == 0 else 0     #try to avoid being in seeker view
+                
+                if not valid_action:
+                    reward -= 10
+
+
         elif criterion == 'distance':
             other = self.players[1] if player == self.players[0] else self.players[0]
             # i,j of both
