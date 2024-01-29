@@ -1859,7 +1859,7 @@ class Agent_alpha_8:
             for n in objects[lidar[elem][0]]:
                 lidar_data.append(int(n))
             lidar_data.append(lidar[elem][1])
-
+        #lidar_data = [0 0 0 0 0 1 7.56 , 100000 89.3 ...] (1-hot encoding obj_type + distance)
 
         state = [i,j] + av_pos + lidar_data + [other_player_i, other_player_j]
 

@@ -146,7 +146,7 @@ class Game:
         for p in self.players:
             p.trigger_lidar()
             for i in range(len(p.lidar_view)):
-                pg.draw.rect(self.screen, (255,140,0), (p.lidar_view[i].x, p.lidar_view[i].y, p.lidar_view[i].size, p.lidar_view[i].size), 25)
+                pg.draw.rect(self.screen, p.color, (p.lidar_view[i].x, p.lidar_view[i].y, p.lidar_view[i].size, p.lidar_view[i].size), 25)
 
     def draw_players(self):
         for p in self.players:

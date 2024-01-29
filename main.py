@@ -6,11 +6,12 @@ from models import QTrainer, QTrainer_beta_1
 import sys
 import argparse
 import os
+from util import plot_learning_curve, write_config
 
 WHITE = (255, 255, 255)
 BLACK = (0, 0, 0)
 
-MAX_TIME = 1500
+MAX_TIME = 1000
 WINTIME = 3
 
 
@@ -25,9 +26,12 @@ def main():
     seek = args.seek
 
     # Instantiate Game and Agents
-    game = Game(30,30,20)
+    game = Game(26, 25, 40)
     hider = Agent_alpha_3('hider_0021', QTrainer_beta_1, 0.001, 1000, 5000)
     seeker = Agent_alpha_3('seeker_0021',QTrainer_beta_1, 0.001, 1000, 5000)
+
+    seeker_rewards, seeker_eps_history = [], []
+    hider_rewards, hider_eps_history = [], []
 
 
     frames = 0
@@ -109,24 +113,24 @@ def main():
 
         if gameover or stop:
 
-            if not frames % 2:
-                hider_reward = game.reward(game.players[0], valid_action, WINTIME, criterion="explore")
-                hider_state = hider.get_state(game, game.players[0])
-                hider.remember(hider_state, [0,0,0,0,0,1], hider_reward, hider_state, gameover or stop)
-
-            if frames % 2:
-                seeker_reward = game.reward(game.players[1], valid_action, WINTIME, criterion="explore")
-                seeker_state = seeker.get_state(game, game.players[1])
-                seeker.remember(seeker_state, [0,0,0,0,0,1], seeker_reward, seeker_state, gameover or stop)
-                
-
-            # log some info about generation
+                        # log some info about generation
             print("*"*50)
             print(f"Generation: {seeker.n_games}")
             if seeker.epsilon > 0: print(f"Exploring and Exploiting with Epsilon: {seeker.epsilon}")
             else: print("Exploiting only")
             print(f"\033[94mSeeker Reward: {game.players[1].reward}\033[0m")
             print(f"\033[92mHider Reward: {game.players[0].reward}\033[0m")
+
+            if frames % 2:
+                hider_reward = game.reward(game.players[0], valid_action, WINTIME, criterion="explore")
+                hider_state = hider.get_state(game, game.players[0])
+                hider.remember(hider_state, [0,0,0,0,0,1], hider_reward, hider_state, gameover or stop)
+
+            if not frames % 2:
+                seeker_reward = game.reward(game.players[1], valid_action, WINTIME, criterion="explore")
+                seeker_state = seeker.get_state(game, game.players[1])
+                seeker.remember(seeker_state, [0,0,0,0,0,1], seeker_reward, seeker_state, gameover or stop)
+
 
 
             hider_file_path = "./"+hider.agent_name+"/reward/reward_"+hider.name+".txt"
@@ -142,15 +146,37 @@ def main():
                 f.write(str(game.players[1].reward) + ";")
 
 
+            seeker_rewards.append(game.players[1].reward)
+            seeker_eps_history.append(seeker.epsilon)
+            seeker_avg_reward = np.mean(seeker_rewards[-100:])
+            print('Game: ', seeker.n_games, ' Seeker reward %.2f' % game.players[1].reward, 'average reward %.2f' % seeker_avg_reward, 'epsilon %.2f' % seeker.epsilon)
+
+            seeker_filename = 'seeker_'+seeker.agent_name+'.png'
+            if seeker.n_games % 10 == 0 and seeker.n_games != 0:
+                x = [i + 1 for i in range(seeker.n_games)]
+                plot_learning_curve(x, seeker_rewards, seeker_eps_history, seeker_filename, seeker.agent_name, 'Seeker')
+
+            
+            hider_rewards.append(game.players[0].reward)
+            hider_eps_history.append(hider.epsilon)
+            hider_avg_reward = np.mean(hider_rewards[-100:])
+            print('Game: ', hider.n_games, ' Hider reward %.2f' % game.players[0].reward, 'average reward %.2f' % hider_avg_reward, 'epsilon %.2f' % hider.epsilon)
+
+            hider_filename = 'hider_'+hider.agent_name+'.png'
+            if hider.n_games % 10 == 0 and hider.n_games != 0:
+                x = [i + 1 for i in range(hider.n_games)]
+                plot_learning_curve(x, hider_rewards, hider_eps_history, hider_filename, hider.agent_name, 'Hider')
+
+
             game.reset()
             frames = 0
             gameover = False
             stop = False
             hider.n_games += 1
-            #if hide: hider.train_long_memory()
+            if hide: hider.train_long_memory()
             seeker.n_games += 1
-            #if seek: seeker.train_long_memory()
-            """"
+            if seek: seeker.train_long_memory()
+            
             if (hider.n_games % 20 == 0 or seeker.n_games % 20 == 0) and (hider.n_games != 0 and seeker.n_games != 0):
                 if hide : hider.train_replay("reward")
                 if seek : seeker.train_replay("reward")
@@ -162,7 +188,7 @@ def main():
             if (hider.n_games % 30 == 0 or seeker.n_games % 30 == 0) and (hider.n_games != 0 and seeker.n_games != 0):
                 if hide : hider.clean_memory(duplicates=5)
                 if seek : seeker.clean_memory(duplicates=5)
-            """
+            
                 
 
 
