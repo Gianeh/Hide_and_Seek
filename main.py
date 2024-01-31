@@ -27,10 +27,10 @@ def main():
     seek = args.seek
 
     # Instantiate Game and Agents
-    map_name = 'map2.txt'
+    map_name = 'map20.txt'
     game = Game(26, 26, 40, map_name)
-    hider = Agent_alpha_3('hider', QTrainer_beta_1, 0.001, 1000, 5000)
-    seeker = Agent_alpha_3('seeker',QTrainer_beta_1, 0.001, 1000, 5000)
+    hider = Agent_alpha_2('hider', QTrainer_beta_1, 0.001, 1000, 5000)
+    seeker = Agent_alpha_2('seeker',QTrainer_beta_1, 0.001, 1000, 5000)
 
     hider_trainer = ""
     if hider.Qtrainer == QTrainer:
@@ -215,8 +215,6 @@ def main():
             stop = False
 
             
-                
-
 
 if __name__ == "__main__":
     main()

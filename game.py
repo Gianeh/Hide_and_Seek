@@ -8,13 +8,15 @@ WHITE = (255, 255, 255)
 BLACK = (0, 0, 0)
 
 class Game:
-    def __init__(self, rows, cols, size, map_name):
+    def __init__(self, rows, cols, size, map_name="map0.txt", random_spawn=True):
         self.rows = rows
         self.cols = cols
         self.size = size
         self.width = cols * size
         self.height = rows * size
         self.map_name = map_name
+        self.random_spawn = random_spawn
+
         pg.init()                                               #<--------
         pg.display.set_caption('HIDE AND SEEK GAME')            #<--------
         self.screen = pg.display.set_mode((self.width, self.height))
@@ -46,24 +48,6 @@ class Game:
         self.map = self.init_map()
         self.players = self.init_players()
 
-
-    '''def init_map(self):
-        map = []
-        for row in range(self.rows):
-            map.append([])
-            for col in range(self.cols):
-                x = col * self.size
-                y = row * self.size
-                
-                if col % 6 == 0 and row % 6 == 0:
-                    map[row].append(MovableWall(x, y, self.size))
-                else:
-                    map[row].append(Floor(x, y, self.size))
-                
-                
-               # map[row].append(Floor(x, y, self.size))
-        return map'''
-    
     def init_map(self):
         map = []
         with open('./maps/'+self.map_name, 'r') as file:
@@ -85,31 +69,37 @@ class Game:
 
     def init_players(self):
         players = []
-        i = random.randint(0, self.rows - 1)
-        j = random.randint(0, self.cols - 1)
-
-        while self.map[i][j].obj_type != 'floor':
+        if self.random_spawn:
             i = random.randint(0, self.rows - 1)
             j = random.randint(0, self.cols - 1)
-        players.append(Hider(j*self.size, i*self.size, self.size, map=self.map, cols=self.cols))
-        #print("coordinates: ", i, j ,"obj_type: ",self.map[i][j].obj_type, "\n")
 
-        while self.map[i][j].obj_type != 'floor':
-            i = random.randint(0, self.rows - 1)
-            j = random.randint(0, self.cols - 1)
-        players.append(Seeker(j*self.size, i*self.size, self.size, map=self.map, cols=self.cols))
-        #print("coordinates: ", i, j, "obj_type: ", self.map[i][j].obj_type, "\n")
+            while self.map[i][j].obj_type != 'floor':
+                i = random.randint(0, self.rows - 1)
+                j = random.randint(0, self.cols - 1)
+            players.append(Hider(j*self.size, i*self.size, self.size, map=self.map, cols=self.cols))
+            #print("coordinates: ", i, j ,"obj_type: ",self.map[i][j].obj_type, "\n")
+
+            while self.map[i][j].obj_type != 'floor':
+                i = random.randint(0, self.rows - 1)
+                j = random.randint(0, self.cols - 1)
+            players.append(Seeker(j*self.size, i*self.size, self.size, map=self.map, cols=self.cols))
+            #print("coordinates: ", i, j, "obj_type: ", self.map[i][j].obj_type, "\n")
+
+        else:
+            players.append(Hider(0*self.size, 0*self.size, self.size, map=self.map, cols=self.cols))
+            players.append(Seeker((self.rows-1)*self.size, (self.cols-1)*self.size, self.size, map=self.map, cols=self.cols))
+
 
         players[0].look()
         players[1].look()
         return players
 
-    def update(self):
+    def update(self, lidar=True, view=True, scores=True):
         self.draw_map()
-        self.draw_lidar_view()
-        self.draw_players_view()
+        if lidar: self.draw_lidar_view()
+        if view: self.draw_players_view()
         self.draw_players()
-        self.draw_scores()
+        if scores: self.draw_scores()
         
 
     def draw_map(self):
@@ -264,7 +254,7 @@ class Game:
                     print("Hider loses!")
                 else:
                     #reward += 0.2
-                    reward += 0.5 if other.seen == 0 else 0     #try to avoid being in seeker view
+                    reward += 0.5 if other.seen == 0 else -20     #try to avoid being in seeker view
                 
                 if not valid_action:
                     reward -= 1

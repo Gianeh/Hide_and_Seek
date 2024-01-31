@@ -1901,3 +1901,51 @@ class Agent_alpha_8:
 
     def decrement_epsilon(self):
         self.epsilon = self.epsilon - self.eps_dec if self.epsilon > self.eps_min else self.eps_min
+
+# Agent Perfect_seeker is a cheater, never lend him your money, he uses no neural model or learn at all but in empty maps is really good at finding hiders
+class Perfect_seeker_0:
+    def __init__(self, name='model'):
+        self.agent_name = "perfect_seeker_0"
+        self.name = name
+        self.n_games = 0
+        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        print(f"AGENT PERFECT SEEKER 0: playing as {self.name}")
+
+    # only uses game and other information to find perfect moves
+    def get_state(self, game, player):
+        return {"player": player, "other": game.players[0]}
+
+    def get_action(self, state):
+        # strategy: move towards the hider one step at a time
+        other = state["other"]
+        player = state["player"]
+
+        # Perfect_seeker_0 -is dumb walls are a big problem for him
+        chance = random.randint(0, 1)
+        if chance == 0:
+            # plan A:
+            if other.x > player.x:
+                return [0, 0, 0, 1, 0, 0]
+            elif other.x < player.x:
+                return [0, 0, 1, 0, 0, 0]
+            elif other.y > player.y:
+                return [0, 1, 0, 0, 0, 0]
+            elif other.y < player.y:
+                return [1, 0, 0, 0, 0, 0]
+            else:
+                return [0, 0, 0, 0, 0, 1]
+
+        else:
+            # plan B:
+            if other.y > player.y:
+                return [0, 1, 0, 0, 0, 0]
+            elif other.y < player.y:
+                return [1, 0, 0, 0, 0, 0]
+            elif other.x > player.x:
+                return [0, 0, 0, 1, 0, 0]
+            elif other.x < player.x:
+                return [0, 0, 1, 0, 0, 0]
+            else:
+                return [0, 0, 0, 0, 0, 1]
+
+        # perfect seeker 0 never moves walls

@@ -30,6 +30,9 @@ def plot_learning_curve(x, scores, epsilons, filename, agent_name, player_type):
 
     plt.savefig("./"+agent_name+"/train_plots/"+filename)
 
+    # close the plot to avoid overhead
+    plt.close()
+
 
 def write_config(agent_name, player_name, map_name, trainer, lr, batch_size, max_memory, eps, eps_dec, eps_min, layers, reward_criterion):
     file_name = agent_name+'_'+player_name+'_config.txt'
