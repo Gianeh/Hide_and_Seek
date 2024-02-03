@@ -27,10 +27,10 @@ def main():
     seek = args.seek
 
     # Instantiate Game and Agents
-    map_name = 'map20.txt'
+    map_name = 'empty.txt'
     game = Game(26, 26, 40, map_name)
-    hider = Agent_alpha_2('hider', QTrainer_beta_1, 0.001, 1000, 5000)
-    seeker = Agent_alpha_2('seeker',QTrainer_beta_1, 0.001, 1000, 5000)
+    hider = Agent_alpha_0('hider', QTrainer, 0.001, 1000, 5000)
+    seeker = Agent_alpha_2('seeker',QTrainer, 0.001, 1000, 5000)
 
     hider_trainer = ""
     if hider.Qtrainer == QTrainer:
@@ -103,7 +103,7 @@ def main():
             hider_state = hider.get_state(game, game.players[0])
             hider_action = hider.get_action(hider_state)
             valid_action = game.control_player(game.players[0], hider_action)
-            hider_reward = game.reward(game.players[0], valid_action, WINTIME, criterion="explore")
+            hider_reward = game.reward(game.players[0], valid_action, WINTIME, frames, MAX_TIME, criterion="explore")
             hider_new_state = hider.get_state(game, game.players[0])
             hider.train_short_memory(hider_state, hider_action, hider_reward, hider_new_state, gameover)
             hider.remember(hider_state, hider_action, hider_reward, hider_new_state, gameover)
@@ -113,7 +113,7 @@ def main():
             seeker_state = seeker.get_state(game, game.players[1])
             seeker_action = seeker.get_action(seeker_state)
             valid_action = game.control_player(game.players[1], seeker_action)
-            seeker_reward = game.reward(game.players[1], valid_action, WINTIME, criterion="explore")
+            seeker_reward = game.reward(game.players[1], valid_action, WINTIME, frames, MAX_TIME, criterion="explore")
             seeker_new_state = seeker.get_state(game, game.players[1])
             seeker.train_short_memory(seeker_state, seeker_action, seeker_reward, seeker_new_state, gameover)
             seeker.remember(seeker_state, seeker_action, seeker_reward, seeker_new_state, gameover)

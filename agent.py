@@ -4,160 +4,338 @@ from collections import deque
 import numpy as np
 from models import QTrainer, QTrainer_beta_1, QNet, ConvQNet
 import os
-import ast # to easily load memory
+import ast # to easily load memory from file (used in Hive_mind)
 
-# import time for probing purposes
+# For probing purposes
 import time
 
-#Default parameters for all models
+# Default parameters for all models
 MAX_MEMORY = 1000000
 BATCH_SIZE = 10000
 LR = 0.0005
 
-
-# Agent Alpha 0 is the first complete prototype, every piece work but learning seems capped by input encoding or other unknown factors
-class Agent_alpha_0:
-    def __init__(self, name='model', Qtrainer=QTrainer, lr = LR, batch_size = BATCH_SIZE, max_memory = MAX_MEMORY):
-        self.agent_name = "alpha_0"
+# Agent Alpha includes the first tests with agents 0, 1, 2 and 3:
+    # Agent Alpha 0 is the first complete prototype, every piece work but learning seems capped by input encoding or other unknown factors
+    # Agent Alpha 1 is the second complete prototype, the aim is to improve the input encoding narrowing the possible existing problems with alpha 0
+    # Agent Alpha 2, comes to life after considerations made on hivemind 0 prototype, what about mimicking other examples of the same game? the state space is completely changed again in advantage of a coordinate/distance representation
+    # Agent Alpha 3 is a test on the alpha 1 encoding, the state is the same but removing the position and the direction to obtain a simpler representation
+class Agent_alpha:
+    def __init__(self, alpha=0, name='model', Qtrainer=QTrainer, lr = LR, batch_size = BATCH_SIZE, max_memory = MAX_MEMORY):
+        # Agent name corresponds to the alpha generation and is used to save and load the model, configs and memory
+        self.agent_name = "alpha_" + str(alpha)
+        # Alpha generation number (0,1,2,3)
+        self.alpha = alpha
+        # Seeker or Hider
         self.name = name
+        # Q_trainer class is instantiated without parameters to include it in the config file
         self.Qtrainer = Qtrainer
+
+        # Agent hyperparameters
         self.lr = lr
         self.batch_size = batch_size
         self.max_memory = max_memory
-        self.n_games = 0
-        self.epsilon = 0 # randomness
-        self.randomness = 200
-        self.gamma = 0.9 # discount rate
-        self.memory = deque(maxlen=MAX_MEMORY) # automatic popleft()
-        self.init_memory() # reload all previous memeories up to MAX_MEMORY
-        self.replay_memory = []
+        self.n_games = 0        # number of games played
+        self.epsilon = 200      # randomness
+        self.gamma = 0.9        # future expected reward discount rate
+
+        # Agent long term and replay memory
+        self.memory = deque(maxlen=MAX_MEMORY)      # agent memory, queue with maxlen to automatically pop left
+        self.init_memory()                          # reload all previous memeories up to MAX_MEMORY from the memory file
+        self.replay_memory = []                     # a memory buffer to selectively recollect previous experiences
+
+        # Neural network and trainer instantiation
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        self.brain = QNet([79, 256, 512, 256, 5], self.agent_name, self.name).to(self.device)
+        # alpha_generation picks the respective network architecture for the agent
+        alpha_generation = {0: [79, 256, 512, 256, 5], 1: [19, 128, 128, 6], 2: [21, 256, 36, 6], 3: [75, 128, 256, 256, 128, 6]}
+        self.brain = QNet(alpha_generation[self.alpha], self.agent_name, self.name).to(self.device)
         self.trainer = self.Qtrainer(self.brain, self.lr, self.gamma)
 
+        # Load the model if it exists
         if self.brain.load():
             print("Model loaded")
 
-        
+    # Load the memory from the file if it exists
     def init_memory(self):
-        # check if memory file exists
-        if not os.path.exists("./alpha_0/memory/" + self.name +".txt"):
-            if os.path.exists("./alpha_0/memory"):
+        # Check if memory file exists
+        if not os.path.exists("./alpha_"+self.alpha+"/memory/" + self.name +".txt"):
+            # If directory already exists, return
+            if os.path.exists("./alpha_"+self.alpha+"/memory"):
                 return
+            # Otherwise create the directory
             else:
-                os.makedirs("./alpha_0/memory")
+                os.makedirs("./alpha_"+self.alpha+"/memory")
                 return
-        # recall last lines of memory up to MAX_MEMORY
-        with open("./alpha_0/memory/" + self.name +".txt", "r") as f:
+        # Recall last MAX_MEMORY lines from the memory file
+        with open("./alpha_"+self.alpha+"/memory/" + self.name +".txt", "r") as f:
             lines = f.readlines()
             if len(lines) > MAX_MEMORY:
                 lines = lines[-MAX_MEMORY:]
             for line in lines:
                 state, action, reward, next_state, gameover = line.split(";")
                 state = np.array(state[1:-1].split(","), dtype=np.float32)
-                action = np.array(action[1:-1].split(","), dtype=np.float32)
+                action = np.array(action[1:-1].split(","), dtype=np.int32)
                 reward = np.array(float(reward), dtype=np.float32)
                 next_state = np.array(next_state[1:-1].split(","), dtype=np.float32)
                 gameover = np.array(gameover == 'True')
                 self.memory.append((state, action, reward, next_state, gameover))
 
+    # Load the replay memory SELECTIVELY from the file (when  the function is called the file already exists)
     def load_replay_memory(self, criterion="reward"):
-        with open("./alpha_0/memory/" + self.name +".txt", "r") as f:
+        with open("./alpha_"+self.alpha+"/memory/" + self.name +".txt", "r") as f:
+            # Define different sorting criteria for existing memory - note: in memory "reward" is the 3rd element of the lines
             if criterion == "abs_reward":
-                crit = lambda x: abs(float(x.split(";")[2]))
+                crit = lambda x: abs(float(x.split(";")[2]))    # highest reward's absolute value
                 reverse = True
             elif criterion == "reward":
-                crit = lambda x: float(x.split(";")[2])
+                crit = lambda x: float(x.split(";")[2])         # highest rewards
                 reverse = True
             elif criterion == "neg_reward":
-                crit = lambda x: float(x.split(";")[2])
+                crit = lambda x: float(x.split(";")[2])         # lowest rewards
                 reverse = False
-            elif criterion == "lowest_abs_reward":
+            elif criterion == "lowest_abs_reward":              # lowest reward's absolute value
                 crit = lambda x: abs(float(x.split(";")[2]))
                 reverse = False
 
-            lines = sorted(f.readlines(), key=crit, reverse=reverse)
+            # Note: the lines are picked from the bottom of the file -> reverse = True picks the highest values
 
+            lines = sorted(f.readlines(), key=crit, reverse=reverse)
+        
+        # Load up to batch_size lines
         if len(lines) > self.batch_size:
             lines = lines[:self.batch_size]
         for line in lines:
             state, action, reward, next_state, gameover = line.split(";")
             state = np.array(state[1:-1].split(","), dtype=np.float32)
-            action = np.array(action[1:-1].split(","), dtype=np.float32)
+            action = np.array(action[1:-1].split(","), dtype=np.int32)
             reward = np.array(float(reward), dtype=np.float32)
             next_state = np.array(next_state[1:-1].split(","), dtype=np.float32)
             gameover = np.array(gameover == 'True')
             self.replay_memory.append((state, action, reward, next_state, gameover))
                 
-
     def get_state(self, game, player):
-        start = time.time()
         x = player.x
         y = player.y
-        x_norm = player.x / (game.width - player.size)
-        y_norm = player.y / (game.height - player.size)
-        # quadrati adiacenti in base alla direction del player
-        view = player.view
-        objects = {'wall': '10000', 'floor': '01000', 'hider': '00100', 'movable_wall': '00010','seeker': '00001', None: '00000'}
-        # ["wall", "floor", "hider", "movable_wall", None]
-        view_vector = []
-        for l in view:
-            for c in l:
-                if c is None:
-                    for n in objects[c]:
-                        view_vector.append(int(n))
-                else:
-                    for n in objects[c.obj_type]:
-                        view_vector.append(int(n))
 
-        neighbourhood = [] # left back right
         i = y // player.size
         j = x // player.size
-        if player.direction == 'u':
-            left = player.map[i][j-1].obj_type if j-1 >= 0 else None
-            back = player.map[i+1][j].obj_type if i+1 < game.rows else None
-            right = player.map[i][j+1].obj_type if j+1 < game.cols else None
 
-        elif player.direction == 'd':
-            left = player.map[i][j+1].obj_type if j+1 < game.cols else None
-            back = player.map[i-1][j].obj_type if i-1 >= 0 else None
-            right = player.map[i][j-1].obj_type if j-1 >= 0 else None
+        if self.alpha == 0:
+            x_norm = player.x / (game.width - player.size)
+            y_norm = player.y / (game.height - player.size)
+            # quadrati adiacenti in base alla direction del player
+            view = player.view
+            objects = {'wall': '10000', 'floor': '01000', 'hider': '00100', 'movable_wall': '00010','seeker': '00001', None: '00000'}
+            # ["wall", "floor", "hider", "movable_wall", None]
+            view_vector = []
+            for l in view:
+                for c in l:
+                    if c is None:
+                        for n in objects[c]:
+                            view_vector.append(int(n))
+                    else:
+                        for n in objects[c.obj_type]:
+                            view_vector.append(int(n))
 
-        elif player.direction == 'l':
-            left = player.map[i+1][j].obj_type if i+1 < game.rows else None
-            back = player.map[i][j+1].obj_type if j+1 < game.cols else None
-            right = player.map[i-1][j].obj_type if i-1 >= 0 else None
+            neighbourhood = [] # left back right
+            i = y // player.size
+            j = x // player.size
+            if player.direction == 'u':
+                left = player.map[i][j-1].obj_type if j-1 >= 0 else None
+                back = player.map[i+1][j].obj_type if i+1 < game.rows else None
+                right = player.map[i][j+1].obj_type if j+1 < game.cols else None
 
-        elif player.direction == 'r':
-            left = player.map[i-1][j].obj_type if i-1 >= 0 else None
-            back = player.map[i][j-1].obj_type if j-1 >= 0 else None
-            right = player.map[i+1][j].obj_type if i+1 < game.rows else None
-        
-        for n in objects[left]:
-            neighbourhood.append(int(n))
-        for n in objects[back]:
-            neighbourhood.append(int(n))
-        for n in objects[right]:
-            neighbourhood.append(int(n))
+            elif player.direction == 'd':
+                left = player.map[i][j+1].obj_type if j+1 < game.cols else None
+                back = player.map[i-1][j].obj_type if i-1 >= 0 else None
+                right = player.map[i][j-1].obj_type if j-1 >= 0 else None
 
-        # as a test, acquire other player's position
-        # and normalize it
-        other_player = game.players[0] if player.obj_type == 'seeker' else game.players[1]
-        other_player_x = other_player.x / (game.width - other_player.size)
-        other_player_y = other_player.y / (game.height - other_player.size)
+            elif player.direction == 'l':
+                left = player.map[i+1][j].obj_type if i+1 < game.rows else None
+                back = player.map[i][j+1].obj_type if j+1 < game.cols else None
+                right = player.map[i-1][j].obj_type if i-1 >= 0 else None
+
+            elif player.direction == 'r':
+                left = player.map[i-1][j].obj_type if i-1 >= 0 else None
+                back = player.map[i][j-1].obj_type if j-1 >= 0 else None
+                right = player.map[i+1][j].obj_type if i+1 < game.rows else None
+            
+            for n in objects[left]:
+                neighbourhood.append(int(n))
+            for n in objects[back]:
+                neighbourhood.append(int(n))
+            for n in objects[right]:
+                neighbourhood.append(int(n))
+
+            # as a test, acquire other player's position
+            # and normalize it
+            other_player = game.players[0] if player.obj_type == 'seeker' else game.players[1]
+            other_player_x = other_player.x / (game.width - other_player.size)
+            other_player_y = other_player.y / (game.height - other_player.size)
 
 
-        state = [x_norm,y_norm] + view_vector + neighbourhood + [other_player_x, other_player_y]
+            state = [x_norm,y_norm] + view_vector + neighbourhood + [other_player_x, other_player_y]
 
-        end = time.time()
-        #print("get_state: ", end - start)
+        elif self.alpha == 1:
+
+            view = player.view
+            objects = {'wall': '5', 'floor': '1', 'hider': '100', 'movable_wall': '10','seeker': '100', None: '0'}
+            # ["wall", "floor", "hider", "movable_wall", None]
+            view_vector = []
+            for l in view:
+                for c in l:
+                    if c is None:
+                        view_vector.append(int(objects[c]))
+                    else:
+                        view_vector.append(int(objects[c.obj_type]))
+
+            neighbourhood = [] # left back right
+
+            if player.direction == 'u':
+                left = player.map[i][j-1].obj_type if j-1 >= 0 else None
+                back = player.map[i+1][j].obj_type if i+1 < game.rows else None
+                right = player.map[i][j+1].obj_type if j+1 < game.cols else None
+
+            elif player.direction == 'd':
+                left = player.map[i][j+1].obj_type if j+1 < game.cols else None
+                back = player.map[i-1][j].obj_type if i-1 >= 0 else None
+                right = player.map[i][j-1].obj_type if j-1 >= 0 else None
+
+            elif player.direction == 'l':
+                left = player.map[i+1][j].obj_type if i+1 < game.rows else None
+                back = player.map[i][j+1].obj_type if j+1 < game.cols else None
+                right = player.map[i-1][j].obj_type if i-1 >= 0 else None
+
+            elif player.direction == 'r':
+                left = player.map[i-1][j].obj_type if i-1 >= 0 else None
+                back = player.map[i][j-1].obj_type if j-1 >= 0 else None
+                right = player.map[i+1][j].obj_type if i+1 < game.rows else None
+            
+            neighbourhood.append(int(objects[left]))
+            neighbourhood.append(int(objects[back]))
+            neighbourhood.append(int(objects[right]))
+
+            # as a test, acquire other player's position
+            # and normalize it
+            other_player = game.players[0] if player.obj_type == 'seeker' else game.players[1]
+            other_player_i = other_player.y // other_player.size
+            other_player_j = other_player.x // other_player.size
+
+
+            state = [i,j] + view_vector + neighbourhood + [other_player_i, other_player_j]
+
+        elif self.alpha == 2:
+            other_player = game.players[0] if player.obj_type == 'seeker' else game.players[1]
+            other_player_i = other_player.y // other_player.size
+            other_player_j = other_player.x // other_player.size
+            distance = np.sqrt((other_player_i - i)**2 + (other_player_j - j)**2)
+            direction = player.direction
+
+            if direction == 'u':
+                direction = 0
+            elif direction == 'd':
+                direction = 1
+            elif direction == 'l':
+                direction = 2
+            elif direction == 'r':
+                direction = 3
+
+            objects = {'wall': '5', 'floor': '1', 'hider': '100', 'movable_wall': '10','seeker': '100', None: '0'}
+            view = player.view
+            view_vector = []
+            for l in view:
+                for c in l:
+                    if c is None:
+                        view_vector.append(int(objects[c]))
+                    else:
+                        view_vector.append(int(objects[c.obj_type])/100)
+
+            neighbourhood = [] # left back right
+
+            if player.direction == 'u':
+                left = player.map[i][j-1].obj_type if j-1 >= 0 else None
+                back = player.map[i+1][j].obj_type if i+1 < game.rows else None
+                right = player.map[i][j+1].obj_type if j+1 < game.cols else None
+
+            elif player.direction == 'd':
+                left = player.map[i][j+1].obj_type if j+1 < game.cols else None
+                back = player.map[i-1][j].obj_type if i-1 >= 0 else None
+                right = player.map[i][j-1].obj_type if j-1 >= 0 else None
+
+            elif player.direction == 'l':
+                left = player.map[i+1][j].obj_type if i+1 < game.rows else None
+                back = player.map[i][j+1].obj_type if j+1 < game.cols else None
+                right = player.map[i-1][j].obj_type if i-1 >= 0 else None
+
+            elif player.direction == 'r':
+                left = player.map[i-1][j].obj_type if i-1 >= 0 else None
+                back = player.map[i][j-1].obj_type if j-1 >= 0 else None
+                right = player.map[i+1][j].obj_type if i+1 < game.rows else None
+
+            neighbourhood.append(int(objects[left]))
+            neighbourhood.append(int(objects[back]))
+            neighbourhood.append(int(objects[right]))
+            
+            # normalize everything
+            i = i / game.rows
+            j = j / game.cols
+            distance = distance / (game.rows + game.cols)
+            other_player_i = other_player_i / game.rows
+            other_player_j = other_player_j / game.cols
+
+            state = [i,j] + view_vector + neighbourhood + [distance, direction] + [other_player_i, other_player_j]
+
+        elif self.alpha == 3:
+
+            view = player.view
+            objects = {'wall': '10000', 'floor': '01000', 'hider': '00100', 'movable_wall': '00010', 'seeker': '00001', None: '00000'}
+            # ["wall", "floor", "hider", "movable_wall", None]
+            view_vector = []
+            for l in view:
+                for c in l:
+                    if c is None:
+                        for n in objects[c]:
+                            view_vector.append(int(n))
+                    else:
+                        for n in objects[c.obj_type]:
+                            view_vector.append(int(n))
+
+            neighbourhood = []  # left back right
+
+            if player.direction == 'u':
+                left = player.map[i][j - 1].obj_type if j - 1 >= 0 else None
+                back = player.map[i + 1][j].obj_type if i + 1 < game.rows else None
+                right = player.map[i][j + 1].obj_type if j + 1 < game.cols else None
+
+            elif player.direction == 'd':
+                left = player.map[i][j + 1].obj_type if j + 1 < game.cols else None
+                back = player.map[i - 1][j].obj_type if i - 1 >= 0 else None
+                right = player.map[i][j - 1].obj_type if j - 1 >= 0 else None
+
+            elif player.direction == 'l':
+                left = player.map[i + 1][j].obj_type if i + 1 < game.rows else None
+                back = player.map[i][j + 1].obj_type if j + 1 < game.cols else None
+                right = player.map[i - 1][j].obj_type if i - 1 >= 0 else None
+
+            elif player.direction == 'r':
+                left = player.map[i - 1][j].obj_type if i - 1 >= 0 else None
+                back = player.map[i][j - 1].obj_type if j - 1 >= 0 else None
+                right = player.map[i + 1][j].obj_type if i + 1 < game.rows else None
+
+            for n in objects[left]:
+                neighbourhood.append(int(n))
+            for n in objects[back]:
+                neighbourhood.append(int(n))
+            for n in objects[right]:
+                neighbourhood.append(int(n))
+
+            state = view_vector + neighbourhood
 
         return state
 
     def get_action(self, state):
         start = time.time()
         # tradeoff exploration / exploitation
-        self.epsilon = self.randomness - self.n_games    # 80 is arbitrary
+        self.epsilon -= self.n_games
         final_action = [0,0,0,0,0]
         if random.randint(0, 200) < self.epsilon:   # 200 is arbitrary
             action = random.randint(0, 4)
@@ -269,778 +447,8 @@ class Agent_alpha_0:
         print("#" * 50)
         print(f"\033[92mclean_memory for {self.name}, erased {erased} lines in: ", end - start, " seconds\033[0m")
         print("#" * 50)
-    
-# Agent Alpha 1 is the second complete prototype, the aim is to improve the input encoding narrowing the possible existing problems with alpha 0
-class Agent_alpha_1:
-    def __init__(self, name='model', Qtrainer=QTrainer, lr = LR, batch_size = BATCH_SIZE, max_memory = MAX_MEMORY):
-        self.agent_name = "alpha_1"
-        self.name = name
-        self.Qtrainer = Qtrainer
-        self.lr = lr
-        self.batch_size = batch_size
-        self.max_memory = max_memory
-        self.n_games = 0
-        self.epsilon = 0 # randomness
-        self.randomness = 80
-        self.gamma = 0.9 # discount rate
-        self.memory = deque(maxlen=self.max_memory) # automatic popleft()
-        self.init_memory() # reload all previous memeories up to MAX_MEMORY
-        self.replay_memory = []
-        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        self.brain = QNet([19, 128, 128, 6], self.agent_name, self.name).to(self.device)
-        self.trainer = self.Qtrainer(self.brain, self.lr, self.gamma)
 
-        if self.brain.load():
-            print("Model loaded")
-
-        print(f"AGENT ALPHA 1: training {self.name} with {self.device} device")
-        
-    def init_memory(self):
-        # check if memory file exists
-        if not os.path.exists("./alpha_1/memory/" + self.name +".txt"):
-            if os.path.exists("./alpha_1/memory"):
-                return
-            else:
-                os.makedirs("./alpha_1/memory")
-                return
-        # recall last lines of memory up to MAX_MEMORY
-        with open("./alpha_1/memory/" + self.name +".txt", "r") as f:
-            lines = f.readlines()
-            if len(lines) > self.max_memory:
-                lines = lines[-self.max_memory:]
-            for line in lines:
-                state, action, reward, next_state, gameover = line.split(";")
-                state = np.array(state[1:-1].split(","), dtype=np.float32)
-                action = np.array(action[1:-1].split(","), dtype=np.float32)
-                reward = np.array(float(reward), dtype=np.float32)
-                next_state = np.array(next_state[1:-1].split(","), dtype=np.float32)
-                gameover = np.array(gameover == 'True')
-                self.memory.append((state, action, reward, next_state, gameover))
-
-    def load_replay_memory(self, criterion="reward"):
-        with open("./alpha_1/memory/" + self.name +".txt", "r") as f:
-            if criterion == "abs_reward":
-                crit = lambda x: abs(float(x.split(";")[2]))
-                reverse = True
-            elif criterion == "reward":
-                crit = lambda x: float(x.split(";")[2])
-                reverse = True
-            elif criterion == "neg_reward":
-                crit = lambda x: float(x.split(";")[2])
-                reverse = False
-            elif criterion == "lowest_abs_reward":
-                crit = lambda x: abs(float(x.split(";")[2]))
-                reverse = False
-
-            lines = sorted(f.readlines(), key=crit, reverse=reverse)
-
-        if len(lines) > self.batch_size:
-            lines = lines[:self.batch_size]
-        for line in lines:
-            state, action, reward, next_state, gameover = line.split(";")
-            state = np.array(state[1:-1].split(","), dtype=np.float32)
-            action = np.array(action[1:-1].split(","), dtype=np.float32)
-            reward = np.array(float(reward), dtype=np.float32)
-            next_state = np.array(next_state[1:-1].split(","), dtype=np.float32)
-            gameover = np.array(gameover == 'True')
-            self.replay_memory.append((state, action, reward, next_state, gameover))
-                
-    # difference with alpha 0, the state is now encoded in a much simpler way
-    def get_state(self, game, player):
-        start = time.time()
-        x = player.x
-        y = player.y
-        i = y // player.size
-        j = x // player.size
-
-        view = player.view
-        objects = {'wall': '5', 'floor': '1', 'hider': '100', 'movable_wall': '10','seeker': '100', None: '0'}
-        # ["wall", "floor", "hider", "movable_wall", None]
-        view_vector = []
-        for l in view:
-            for c in l:
-                if c is None:
-                    view_vector.append(int(objects[c]))
-                else:
-                    view_vector.append(int(objects[c.obj_type]))
-
-        neighbourhood = [] # left back right
-
-        if player.direction == 'u':
-            left = player.map[i][j-1].obj_type if j-1 >= 0 else None
-            back = player.map[i+1][j].obj_type if i+1 < game.rows else None
-            right = player.map[i][j+1].obj_type if j+1 < game.cols else None
-
-        elif player.direction == 'd':
-            left = player.map[i][j+1].obj_type if j+1 < game.cols else None
-            back = player.map[i-1][j].obj_type if i-1 >= 0 else None
-            right = player.map[i][j-1].obj_type if j-1 >= 0 else None
-
-        elif player.direction == 'l':
-            left = player.map[i+1][j].obj_type if i+1 < game.rows else None
-            back = player.map[i][j+1].obj_type if j+1 < game.cols else None
-            right = player.map[i-1][j].obj_type if i-1 >= 0 else None
-
-        elif player.direction == 'r':
-            left = player.map[i-1][j].obj_type if i-1 >= 0 else None
-            back = player.map[i][j-1].obj_type if j-1 >= 0 else None
-            right = player.map[i+1][j].obj_type if i+1 < game.rows else None
-        
-        neighbourhood.append(int(objects[left]))
-        neighbourhood.append(int(objects[back]))
-        neighbourhood.append(int(objects[right]))
-
-        # as a test, acquire other player's position
-        # and normalize it
-        other_player = game.players[0] if player.obj_type == 'seeker' else game.players[1]
-        other_player_i = other_player.y // other_player.size
-        other_player_j = other_player.x // other_player.size
-
-
-        state = [i,j] + view_vector + neighbourhood + [other_player_i, other_player_j]
-
-        end = time.time()
-        #print("get_state: ", end - start)
-
-        return state
-
-    def get_action(self, state):
-        start = time.time()
-        # tradeoff exploration / exploitation
-        self.epsilon = self.randomness - self.n_games//3    # 80 is arbitrary --> //3 means we explore much more time with constant randomness probability!!
-        final_action = [0,0,0,0,0,0]
-        if random.randint(0, 200) < self.epsilon:   # 200 is arbitrary
-            action = random.randint(0, 5)
-            final_action[action] = 1
-        else:
-            state = np.array(state)
-            current_state = torch.tensor(state, dtype=torch.float).to(self.device)
-            prediction = self.brain(current_state)
-            action = torch.argmax(prediction).item()
-            final_action[action] = 1
-        
-        end = time.time()
-        #print("get_action: ", end - start)
-
-        return final_action
-
-    def remember(self, state, action, reward, next_state, gameover):
-        self.memory.append((state, action, reward, next_state, gameover))
-        # append to a certain file
-        with open("./alpha_1/memory/" + self.name +".txt", "a") as f:
-            f.write(str(state) + ";")
-            f.write(str(action) + ";")
-            f.write(str(reward) + ";")
-            f.write(str(next_state) + ";")
-            f.write(str(gameover) + "\n")
-
-    def train_short_memory(self, state, action, reward, next_state, gameover):
-        start = time.time()
-        state = np.array(state)
-        next_state = np.array(next_state)
-        self.trainer.train_step(state, action, reward, next_state, gameover)
-        end = time.time()
-        #print("train_short_memory: ", end - start)
-
-    def train_long_memory(self):
-        start = time.time()
-        if len(self.memory) > self.batch_size:
-            batch_sample = random.sample(self.memory, self.batch_size)
-            ''' Loss of the exploration phase in the long run
-            batch_sample = []
-            for i in range(len(self.memory)-1, len(self.memory) - 1 - BATCH_SIZE, -1):
-                batch_sample.append(self.memory[i])
-            '''
-        else:
-            batch_sample = self.memory
-
-        states, actions, rewards, next_states, gameovers = zip(*batch_sample)
-
-        # convert to numpy arrays
-        states = np.array(states)
-        actions = np.array(actions)
-        rewards = np.array(rewards)
-        next_states = np.array(next_states)
-        gameovers = np.array(gameovers)
-
-        self.trainer.train_step(states, actions, rewards, next_states, gameovers)
-
-        self.brain.save()
-        end = time.time()
-        if self.name == "seeker": print(f"\033[94mtraning seeker's long memory took: {end - start} seconds\033[0m")
-        else: print(f"\033[92mtraning hider's long memory took: {end - start} seconds\033[0m")
-
-    def train_replay(self, criterion="reward"):
-        start = time.time()
-
-        self.load_replay_memory(criterion)
-
-        states, actions, rewards, next_states, gameovers = zip(*self.replay_memory)
-
-        # convert to numpy arrays
-        states = np.array(states)
-        actions = np.array(actions)
-        rewards = np.array(rewards)
-        next_states = np.array(next_states)
-        gameovers = np.array(gameovers)
-
-        self.trainer.train_step(states, actions, rewards, next_states, gameovers)
-
-        end = time.time()
-        print("+"*50)
-        print(f"\033[96mtrain_replay with {criterion} criterion in: {end - start} seconds\033[0m")
-        print("+"*50)
-        self.replay_memory = []
-
-    def clean_memory(self, duplicates=100):
-        start = time.time()
-        # clean identical lines if number is over
-        file_path = "./alpha_1/memory/" + self.name + ".txt"
-        with open(file_path, "r") as f:
-            lines = f.readlines()
-        count = 0
-        erased = 0
-        i = 0
-        while i < len(lines) - 1:
-            if lines[i] == lines[i + 1]:
-                count += 1
-                if count == duplicates:
-                    lines = lines[:i - duplicates + 2] + lines[i + 1:]
-                    count = 0
-                    erased += duplicates
-            else:
-                count = 0
-            i += 1
-
-        with open(file_path, "w") as f:
-            f.writelines(lines)
-
-        end = time.time()
-        print("#" * 50)
-        print(f"\033[92mclean_memory for {self.name}, erased {erased} lines in: ", end - start, " seconds\033[0m")
-        print("#" * 50)
-
-# Agent Alpha 2, comes to life after considerations made on hivemind prototypes, what about mimicking other examples of the same game? the state space is completely changed again in advantage of a coordinate/distance representation
-class Agent_alpha_2:
-    def __init__(self, name='model', Qtrainer=QTrainer, lr = LR, batch_size = BATCH_SIZE, max_memory = MAX_MEMORY):
-        self.agent_name = "alpha_2"
-        self.name = name
-        self.Qtrainer = Qtrainer
-        self.lr = lr
-        self.batch_size = batch_size
-        self.max_memory = max_memory
-        self.n_games = 0
-        self.epsilon = 0 # randomness
-        self.randomness = 80
-        self.gamma = 0.9 # discount rate
-        self.memory = deque(maxlen=self.max_memory) # automatic popleft()
-        self.init_memory() # reload all previous memeories up to MAX_MEMORY
-        self.replay_memory = []
-        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        self.brain = QNet([21, 256, 36, 6], self.agent_name, self.name).to(self.device)
-        self.trainer = self.Qtrainer(self.brain, self.lr, self.gamma)
-
-        if self.brain.load():
-            print("Model loaded")
-
-        print(f"AGENT ALPHA 2: training {self.name} with {self.device} device")
-        
-    def init_memory(self):
-        # check if memory file exists
-        if not os.path.exists("./alpha_2/memory/" + self.name +".txt"):
-            if os.path.exists("./alpha_2/memory"):
-                return
-            else:
-                os.makedirs("./alpha_2/memory")
-                return
-        # recall last lines of memory up to MAX_MEMORY
-        with open("./alpha_2/memory/" + self.name +".txt", "r") as f:
-            lines = f.readlines()
-            if len(lines) > self.max_memory:
-                lines = lines[-self.max_memory:]
-            for line in lines:
-                state, action, reward, next_state, gameover = line.split(";")
-                state = np.array(state[1:-1].split(","), dtype=np.float32)
-                action = np.array(action[1:-1].split(","), dtype=np.float32)
-                reward = np.array(float(reward), dtype=np.float32)
-                next_state = np.array(next_state[1:-1].split(","), dtype=np.float32)
-                gameover = np.array(gameover == 'True')
-                self.memory.append((state, action, reward, next_state, gameover))
-
-    def load_replay_memory(self, criterion="reward"):
-        with open("./alpha_2/memory/" + self.name +".txt", "r") as f:
-            if criterion == "abs_reward":
-                crit = lambda x: abs(float(x.split(";")[2]))
-                reverse = True
-            elif criterion == "reward":
-                crit = lambda x: float(x.split(";")[2])
-                reverse = True
-            elif criterion == "neg_reward":
-                crit = lambda x: float(x.split(";")[2])
-                reverse = False
-            elif criterion == "lowest_abs_reward":
-                crit = lambda x: abs(float(x.split(";")[2]))
-                reverse = False
-
-            lines = sorted(f.readlines(), key=crit, reverse=reverse)
-
-        if len(lines) > self.batch_size:
-            lines = lines[:self.batch_size]
-        for line in lines:
-            state, action, reward, next_state, gameover = line.split(";")
-            state = np.array(state[1:-1].split(","), dtype=np.float32)
-            action = np.array(action[1:-1].split(","), dtype=np.float32)
-            reward = np.array(float(reward), dtype=np.float32)
-            next_state = np.array(next_state[1:-1].split(","), dtype=np.float32)
-            gameover = np.array(gameover == 'True')
-            self.replay_memory.append((state, action, reward, next_state, gameover))
-
-    # difference with alpha 0, the state is now encoded in a much simpler way
-    def get_state(self, game, player):
-        start = time.time()
-        x = player.x
-        y = player.y
-        i = y // player.size
-        j = x // player.size
-        other_player = game.players[0] if player.obj_type == 'seeker' else game.players[1]
-        other_player_i = other_player.y // other_player.size
-        other_player_j = other_player.x // other_player.size
-        distance = np.sqrt((other_player_i - i)**2 + (other_player_j - j)**2)
-        direction = player.direction
-
-        if direction == 'u':
-            direction = 0
-        elif direction == 'd':
-            direction = 1
-        elif direction == 'l':
-            direction = 2
-        elif direction == 'r':
-            direction = 3
-
-        objects = {'wall': '5', 'floor': '1', 'hider': '100', 'movable_wall': '10','seeker': '100', None: '0'}
-        view = player.view
-        view_vector = []
-        for l in view:
-            for c in l:
-                if c is None:
-                    view_vector.append(int(objects[c]))
-                else:
-                    view_vector.append(int(objects[c.obj_type])/100)
-
-        neighbourhood = [] # left back right
-
-        if player.direction == 'u':
-            left = player.map[i][j-1].obj_type if j-1 >= 0 else None
-            back = player.map[i+1][j].obj_type if i+1 < game.rows else None
-            right = player.map[i][j+1].obj_type if j+1 < game.cols else None
-
-        elif player.direction == 'd':
-            left = player.map[i][j+1].obj_type if j+1 < game.cols else None
-            back = player.map[i-1][j].obj_type if i-1 >= 0 else None
-            right = player.map[i][j-1].obj_type if j-1 >= 0 else None
-
-        elif player.direction == 'l':
-            left = player.map[i+1][j].obj_type if i+1 < game.rows else None
-            back = player.map[i][j+1].obj_type if j+1 < game.cols else None
-            right = player.map[i-1][j].obj_type if i-1 >= 0 else None
-
-        elif player.direction == 'r':
-            left = player.map[i-1][j].obj_type if i-1 >= 0 else None
-            back = player.map[i][j-1].obj_type if j-1 >= 0 else None
-            right = player.map[i+1][j].obj_type if i+1 < game.rows else None
-
-        neighbourhood.append(int(objects[left]))
-        neighbourhood.append(int(objects[back]))
-        neighbourhood.append(int(objects[right]))
-        
-        # normalize everything
-        i = i / game.rows
-        j = j / game.cols
-        distance = distance / (game.rows + game.cols)
-        other_player_i = other_player_i / game.rows
-        other_player_j = other_player_j / game.cols
-
-        state = [i,j] + view_vector + neighbourhood + [distance, direction] + [other_player_i, other_player_j]
-
-        end = time.time()
-        #print("get_state: ", end - start)
-
-        return state
-
-
-    def get_action(self, state):
-        start = time.time()
-        # tradeoff exploration / exploitation
-        self.epsilon = self.randomness - self.n_games//3    # 80 is arbitrary --> //3 means we explore much more time with constant randomness probability!!
-        final_action = [0,0,0,0,0,0]
-        if random.randint(0, 200) < self.epsilon:   # 200 is arbitrary
-            action = random.randint(0, 5)
-            final_action[action] = 1
-        else:
-            state = np.array(state)
-            current_state = torch.tensor(state, dtype=torch.float).to(self.device)
-            prediction = self.brain(current_state)
-            action = torch.argmax(prediction).item()
-            final_action[action] = 1
-        
-        end = time.time()
-        #print("get_action: ", end - start)
-
-        return final_action
-
-    def remember(self, state, action, reward, next_state, gameover):
-        self.memory.append((state, action, reward, next_state, gameover))
-        # append to a certain file
-        with open("./alpha_2/memory/" + self.name +".txt", "a") as f:
-            f.write(str(state) + ";")
-            f.write(str(action) + ";")
-            f.write(str(reward) + ";")
-            f.write(str(next_state) + ";")
-            f.write(str(gameover) + "\n")
-
-
-    def train_short_memory(self, state, action, reward, next_state, gameover):
-        start = time.time()
-        state = np.array(state)
-        next_state = np.array(next_state)
-        self.trainer.train_step(state, action, reward, next_state, gameover)
-        end = time.time()
-        #print("train_short_memory: ", end - start)
-
-    def train_long_memory(self):
-        start = time.time()
-        if len(self.memory) > self.batch_size:
-            batch_sample = random.sample(self.memory, self.batch_size)
-            ''' Loss of the exploration phase in the long run
-            batch_sample = []
-            for i in range(len(self.memory)-1, len(self.memory) - 1 - BATCH_SIZE, -1):
-                batch_sample.append(self.memory[i])
-            '''
-        else:
-            batch_sample = self.memory
-
-        states, actions, rewards, next_states, gameovers = zip(*batch_sample)
-
-        # convert to numpy arrays
-        states = np.array(states)
-        actions = np.array(actions)
-        rewards = np.array(rewards)
-        next_states = np.array(next_states)
-        gameovers = np.array(gameovers)
-
-        self.trainer.train_step(states, actions, rewards, next_states, gameovers)
-
-        self.brain.save()
-        end = time.time()
-        if self.name == "seeker": print(f"\033[94mtraning seeker's long memory took: {end - start} seconds\033[0m")
-        else: print(f"\033[92mtraning hider's long memory took: {end - start} seconds\033[0m")
-
-    def train_replay(self, criterion="reward"):
-        start = time.time()
-
-        self.load_replay_memory(criterion)
-
-        states, actions, rewards, next_states, gameovers = zip(*self.replay_memory)
-
-        # convert to numpy arrays
-        states = np.array(states)
-        actions = np.array(actions)
-        rewards = np.array(rewards)
-        next_states = np.array(next_states)
-        gameovers = np.array(gameovers)
-
-        self.trainer.train_step(states, actions, rewards, next_states, gameovers)
-
-        end = time.time()
-        print("+"*50)
-        print(f"\033[96mtrain_replay with {criterion} criterion in: {end - start} seconds\033[0m")
-        print("+"*50)
-        self.replay_memory = []
-
-
-    def clean_memory(self, duplicates=100):
-        start = time.time()
-        # clean identical lines if number is over
-        file_path = "./alpha_2/memory/" + self.name + ".txt"
-        with open(file_path, "r") as f:
-            lines = f.readlines()
-        count = 0
-        erased = 0
-        i = 0
-        while i < len(lines) - 1:
-            if lines[i] == lines[i + 1]:
-                count += 1
-                if count == duplicates:
-                    lines = lines[:i - duplicates + 2] + lines[i + 1:]
-                    count = 0
-                    erased += duplicates
-            else:
-                count = 0
-            i += 1
-
-        with open(file_path, "w") as f:
-            f.writelines(lines)
-
-        end = time.time()
-        print("#" * 50)
-        print(f"\033[92mclean_memory for {self.name}, erased {erased} lines in: ", end - start, " seconds\033[0m")
-        print("#" * 50)
-
-
-
-class Agent_alpha_3:
-    def __init__(self, name='model', Qtrainer=QTrainer, lr=LR, batch_size=BATCH_SIZE, max_memory=MAX_MEMORY):
-        self.agent_name = "alpha_3"
-        self.name = name
-        self.Qtrainer = Qtrainer
-        self.lr = lr
-        self.batch_size = batch_size
-        self.max_memory = max_memory
-        self.n_games = 0
-        self.epsilon = 0  # randomness
-        self.randomness = 200
-        self.gamma = 0.7  # discount rate
-        self.memory = deque(maxlen=self.max_memory)  # automatic popleft()
-        self.init_memory()  # reload all previous memeories up to MAX_MEMORY
-        self.replay_memory = []
-        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        self.brain = QNet([75, 128, 256, 256, 128, 6], self.agent_name, self.name).to(self.device)
-        self.trainer = self.Qtrainer(self.brain, self.lr, self.gamma)
-
-        if self.brain.load():
-            print("Model loaded")
-
-        print(f"AGENT ALPHA 3: training {self.name} with {self.device} device")
-
-    def init_memory(self):
-        # check if memory file exists
-        if not os.path.exists("./alpha_3/memory/" + self.name + ".txt"):
-            if os.path.exists("./alpha_3/memory"):
-                return
-            else:
-                os.makedirs("./alpha_3/memory")
-                return
-        # recall last lines of memory up to MAX_MEMORY
-        with open("./alpha_3/memory/" + self.name + ".txt", "r") as f:
-            lines = f.readlines()
-            if len(lines) > self.max_memory:
-                lines = lines[-self.max_memory:]
-            for line in lines:
-                state, action, reward, next_state, gameover = line.split(";")
-                state = np.array(state[1:-1].split(","), dtype=np.float32)
-                action = np.array(action[1:-1].split(","), dtype=np.float32)
-                reward = np.array(float(reward), dtype=np.float32)
-                next_state = np.array(next_state[1:-1].split(","), dtype=np.float32)
-                gameover = np.array(gameover == 'True')
-                self.memory.append((state, action, reward, next_state, gameover))
-
-    def load_replay_memory(self, criterion="reward"):
-        with open("./alpha_3/memory/" + self.name + ".txt", "r") as f:
-            if criterion == "abs_reward":
-                crit = lambda x: abs(float(x.split(";")[2]))
-                reverse = True
-            elif criterion == "reward":
-                crit = lambda x: float(x.split(";")[2])
-                reverse = True
-            elif criterion == "neg_reward":
-                crit = lambda x: float(x.split(";")[2])
-                reverse = False
-            elif criterion == "lowest_abs_reward":
-                crit = lambda x: abs(float(x.split(";")[2]))
-                reverse = False
-
-            lines = sorted(f.readlines(), key=crit, reverse=reverse)
-
-        if len(lines) > self.batch_size:
-            lines = lines[:self.batch_size]
-        for line in lines:
-            state, action, reward, next_state, gameover = line.split(";")
-            state = np.array(state[1:-1].split(","), dtype=np.float32)
-            action = np.array(action[1:-1].split(","), dtype=np.float32)
-            reward = np.array(float(reward), dtype=np.float32)
-            next_state = np.array(next_state[1:-1].split(","), dtype=np.float32)
-            gameover = np.array(gameover == 'True')
-            self.replay_memory.append((state, action, reward, next_state, gameover))
-
-    # difference with alpha 0, the state is now encoded in a much simpler way
-    def get_state(self, game, player):
-        start = time.time()
-        x = player.x
-        y = player.y
-        i = y // player.size
-        j = x // player.size
-
-        view = player.view
-        objects = {'wall': '10000', 'floor': '01000', 'hider': '00100', 'movable_wall': '00010', 'seeker': '00001', None: '00000'}
-        # ["wall", "floor", "hider", "movable_wall", None]
-        view_vector = []
-        for l in view:
-            for c in l:
-                if c is None:
-                    for n in objects[c]:
-                        view_vector.append(int(n))
-                else:
-                    for n in objects[c.obj_type]:
-                        view_vector.append(int(n))
-
-        neighbourhood = []  # left back right
-
-        if player.direction == 'u':
-            left = player.map[i][j - 1].obj_type if j - 1 >= 0 else None
-            back = player.map[i + 1][j].obj_type if i + 1 < game.rows else None
-            right = player.map[i][j + 1].obj_type if j + 1 < game.cols else None
-
-        elif player.direction == 'd':
-            left = player.map[i][j + 1].obj_type if j + 1 < game.cols else None
-            back = player.map[i - 1][j].obj_type if i - 1 >= 0 else None
-            right = player.map[i][j - 1].obj_type if j - 1 >= 0 else None
-
-        elif player.direction == 'l':
-            left = player.map[i + 1][j].obj_type if i + 1 < game.rows else None
-            back = player.map[i][j + 1].obj_type if j + 1 < game.cols else None
-            right = player.map[i - 1][j].obj_type if i - 1 >= 0 else None
-
-        elif player.direction == 'r':
-            left = player.map[i - 1][j].obj_type if i - 1 >= 0 else None
-            back = player.map[i][j - 1].obj_type if j - 1 >= 0 else None
-            right = player.map[i + 1][j].obj_type if i + 1 < game.rows else None
-
-        for n in objects[left]:
-            neighbourhood.append(int(n))
-        for n in objects[back]:
-            neighbourhood.append(int(n))
-        for n in objects[right]:
-            neighbourhood.append(int(n))
-
-        state = view_vector + neighbourhood
-
-        end = time.time()
-        # print("get_state: ", end - start)
-
-        return state
-
-    def get_action(self, state):
-        start = time.time()
-        # tradeoff exploration / exploitation
-        self.epsilon = self.randomness - self.n_games // 3  # 200 is arbitrary --> //3 means we explore much more time with constant randomness probability!!
-        final_action = [0, 0, 0, 0, 0, 0]
-        if random.randint(0, 200) < self.epsilon:  # 200 is arbitrary
-            action = random.randint(0, 5)
-            final_action[action] = 1
-        else:
-            state = np.array(state)
-            current_state = torch.tensor(state, dtype=torch.float).to(self.device)
-            prediction = self.brain(current_state)
-            action = torch.argmax(prediction).item()
-            final_action[action] = 1
-
-        end = time.time()
-        # print("get_action: ", end - start)
-
-        return final_action
-
-    def remember(self, state, action, reward, next_state, gameover):
-        self.memory.append((state, action, reward, next_state, gameover))
-        # append to a certain file
-        with open("./alpha_3/memory/" + self.name + ".txt", "a") as f:
-            f.write(str(state) + ";")
-            f.write(str(action) + ";")
-            f.write(str(reward) + ";")
-            f.write(str(next_state) + ";")
-            f.write(str(gameover) + "\n")
-
-    def train_short_memory(self, state, action, reward, next_state, gameover):
-        start = time.time()
-        state = np.array(state)
-        next_state = np.array(next_state)
-        self.trainer.train_step(state, action, reward, next_state, gameover)
-        end = time.time()
-        # print("train_short_memory: ", end - start)
-
-    def train_long_memory(self):
-        start = time.time()
-        if len(self.memory) > self.batch_size:
-            batch_sample = random.sample(self.memory, self.batch_size)
-            ''' Loss of the exploration phase in the long run
-            batch_sample = []
-            for i in range(len(self.memory)-1, len(self.memory) - 1 - BATCH_SIZE, -1):
-                batch_sample.append(self.memory[i])
-            '''
-        else:
-            batch_sample = self.memory
-
-        states, actions, rewards, next_states, gameovers = zip(*batch_sample)
-
-        # convert to numpy arrays
-        states = np.array(states)
-        actions = np.array(actions)
-        rewards = np.array(rewards)
-        next_states = np.array(next_states)
-        gameovers = np.array(gameovers)
-
-        self.trainer.train_step(states, actions, rewards, next_states, gameovers)
-
-        self.brain.save()
-        end = time.time()
-        if self.name == "seeker":
-            print(f"\033[94mtraning seeker's long memory took: {end - start} seconds\033[0m")
-        else:
-            print(f"\033[92mtraning hider's long memory took: {end - start} seconds\033[0m")
-
-    def train_replay(self, criterion="reward"):
-        start = time.time()
-
-        self.load_replay_memory(criterion)
-
-        states, actions, rewards, next_states, gameovers = zip(*self.replay_memory)
-
-        # convert to numpy arrays
-        states = np.array(states)
-        actions = np.array(actions)
-        rewards = np.array(rewards)
-        next_states = np.array(next_states)
-        gameovers = np.array(gameovers)
-
-        self.trainer.train_step(states, actions, rewards, next_states, gameovers)
-
-        end = time.time()
-        print("+" * 50)
-        print(f"\033[96mtrain_replay with {criterion} criterion in: {end - start} seconds\033[0m")
-        print("+" * 50)
-        self.replay_memory = []
-
-    def clean_memory(self, duplicates=100):
-        start = time.time()
-        # clean identical lines if number is over
-        file_path = "./alpha_3/memory/" + self.name + ".txt"
-        with open(file_path, "r") as f:
-            lines = f.readlines()
-        count = 0
-        erased = 0
-        i = 0
-        while i < len(lines) - 1:
-            if lines[i] == lines[i + 1]:
-                count += 1
-                if count == duplicates:
-                    lines = lines[:i - duplicates + 2] + lines[i + 1:]
-                    count = 0
-                    erased += duplicates
-            else:
-                count = 0
-            i += 1
-
-        with open(file_path, "w") as f:
-            f.writelines(lines)
-
-        end = time.time()
-        print("#" * 50)
-        print(f"\033[92mclean_memory for {self.name}, erased {erased} lines in: ", end - start,
-              " seconds\033[0m")
-        print("#" * 50)
-
-
-
-# Hivemind series, as the name suggests, is meant to be able to predict next action taking into account the whole map
+# Hivemind, as the name suggests, is meant to be able to predict next action taking into account the whole map image - It's the only Agent that takes advantage of the Convolutional Neural Network
 class Agent_hivemind_0:
     def __init__(self, name='model', Qtrainer=QTrainer, lr = LR, batch_size = BATCH_SIZE, max_memory = MAX_MEMORY):
         self.agent_name = "hivemind_0"
@@ -1057,8 +465,9 @@ class Agent_hivemind_0:
         self.init_memory() # reload all previous memories up to MAX_MEMORY
         self.replay_memory = []
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        #brain designed for a 26x26 map
+        # brain designed for a 26x26 map
         self.brain = ConvQNet([[1, 3, 3, 1, 1], [3, 1, 9, 1, 0], [1, 1, 7, 1, 0], [1, 1, 5, 1, 0]], [64, 128, 128, 6], self.agent_name, self.name).to(self.device)
+        # Convolutional layers definition is not flexible and needs a coherent input (i.e. Map size dependent)
         self.trainer = self.Qtrainer(self.brain, self.lr, self.gamma, convolutional=True)
 
         if self.brain.load():
@@ -1241,8 +650,6 @@ class Agent_hivemind_0:
         print(f"\033[92mclean_memory for {self.name}, erased {erased} lines in: ", end - start, " seconds\033[0m")
         print("#" * 50)
 
-
-
 class Agent_alpha_4:
     def __init__(self, name='model', Qtrainer=QTrainer_beta_1, lr=0.0005, batch_size=1000, max_memory=100000, eps_dec= 5e-4, eps_min = 0.01):
         self.agent_name = "alpha_4"
@@ -1335,8 +742,14 @@ class Agent_alpha_4:
     def remember(self, state, action, reward, next_state, gameover):
         self.memory.append((state, action, reward, next_state, gameover))
 
+    def train_short_memory(self, state, action, reward, next_state, gameover):
+        start = time.time()
+        state = np.array(state)
+        next_state = np.array(next_state)
+        self.trainer.train_step(state, action, reward, next_state, gameover)
+        end = time.time()
 
-    def train(self):
+    def train_long_memory(self):
         if len(self.memory) < self.batch_size:
             return
         else:
@@ -1357,11 +770,8 @@ class Agent_alpha_4:
 
         self.decrement_epsilon()
 
-
     def decrement_epsilon(self):
         self.epsilon = self.epsilon - self.eps_dec if self.epsilon > self.eps_min else self.eps_min
-
-
 
 class Agent_alpha_5:
     def __init__(self, name='model', Qtrainer=QTrainer_beta_1, lr=0.001, batch_size=1000, max_memory=100000, epsilon = 1.0, eps_dec= 5e-4, eps_min = 0.05):
@@ -1385,7 +795,6 @@ class Agent_alpha_5:
             print("Model loaded")
 
         print(f"AGENT ALPHA 5: training {self.name} with {self.device} device")
-
 
     def get_state(self, game, player):
         start = time.time()
@@ -1471,7 +880,6 @@ class Agent_alpha_5:
 
         return final_action
     
-
     def perform_action(self, state):
         # only exploitation
         final_action = [0, 0, 0, 0, 0, 0]
@@ -1487,8 +895,14 @@ class Agent_alpha_5:
     def remember(self, state, action, reward, next_state, gameover):
         self.memory.append((state, action, reward, next_state, gameover))
 
+    def train_short_memory(self, state, action, reward, next_state, gameover):
+        start = time.time()
+        state = np.array(state)
+        next_state = np.array(next_state)
+        self.trainer.train_step(state, action, reward, next_state, gameover)
+        end = time.time()
 
-    def train(self):
+    def train_long_memory(self):
         if len(self.memory) < self.batch_size:
             return
         else:
@@ -1509,11 +923,8 @@ class Agent_alpha_5:
 
         self.decrement_epsilon()
 
-
     def decrement_epsilon(self):
         self.epsilon = self.epsilon - self.eps_dec if self.epsilon > self.eps_min else self.eps_min
-
-
 
 class Agent_alpha_6:
     def __init__(self, name='model', Qtrainer=QTrainer_beta_1, lr=0.001, batch_size=1000, max_memory=100000, epsilon = 1.0, eps_dec= 5e-4, eps_min = 0.05):
@@ -1537,7 +948,6 @@ class Agent_alpha_6:
             print("Model loaded")
 
         print(f"AGENT ALPHA 6: training {self.name} with {self.device} device")
-
 
     def get_state(self, game, player):
         start = time.time()
@@ -1635,8 +1045,14 @@ class Agent_alpha_6:
     def remember(self, state, action, reward, next_state, gameover):
         self.memory.append((state, action, reward, next_state, gameover))
 
+    def train_short_memory(self, state, action, reward, next_state, gameover):
+        start = time.time()
+        state = np.array(state)
+        next_state = np.array(next_state)
+        self.trainer.train_step(state, action, reward, next_state, gameover)
+        end = time.time()
 
-    def train(self):
+    def train_long_memory(self):
         if len(self.memory) < self.batch_size:
             return
         else:
@@ -1657,12 +1073,8 @@ class Agent_alpha_6:
 
         self.decrement_epsilon()
 
-
     def decrement_epsilon(self):
         self.epsilon = self.epsilon - self.eps_dec if self.epsilon > self.eps_min else self.eps_min
-
-
-
 
 class Agent_alpha_7:
     def __init__(self, name='model', Qtrainer=QTrainer_beta_1, lr=0.001, batch_size=1000, max_memory=100000, epsilon = 1.0, eps_dec= 5e-4, eps_min = 0.05):
@@ -1686,7 +1098,6 @@ class Agent_alpha_7:
             print("Model loaded")
 
         print(f"AGENT ALPHA 7: training {self.name} with {self.device} device")
-
 
     def get_state(self, game, player):
         start = time.time()
@@ -1721,7 +1132,6 @@ class Agent_alpha_7:
 
         return state
 
-
     def get_action(self, state):
         # tradeoff exploration / exploitation
         final_action = [0, 0, 0, 0, 0, 0]
@@ -1740,7 +1150,6 @@ class Agent_alpha_7:
 
         return final_action
     
-    
     #method to perform only model prediction in game
     def perform_action(self, state):
         # tradeoff exploration / exploitation
@@ -1757,8 +1166,14 @@ class Agent_alpha_7:
     def remember(self, state, action, reward, next_state, gameover):
         self.memory.append((state, action, reward, next_state, gameover))
 
+    def train_short_memory(self, state, action, reward, next_state, gameover):
+        start = time.time()
+        state = np.array(state)
+        next_state = np.array(next_state)
+        self.trainer.train_step(state, action, reward, next_state, gameover)
+        end = time.time()
 
-    def train(self):
+    def train_long_memory(self):
         if len(self.memory) < self.batch_size:
             return
         else:
@@ -1780,11 +1195,8 @@ class Agent_alpha_7:
 
         self.decrement_epsilon()
 
-
     def decrement_epsilon(self):
         self.epsilon = self.epsilon - self.eps_dec if self.epsilon > self.eps_min else self.eps_min
-
-
 
 class Agent_alpha_8:
     def __init__(self, name='model', Qtrainer=QTrainer_beta_1, lr=0.001, batch_size=1000, max_memory=100000, epsilon = 1.0, eps_dec= 5e-4, eps_min = 0.05):
@@ -1808,7 +1220,6 @@ class Agent_alpha_8:
             print("Model loaded")
 
         print(f"AGENT ALPHA 8: training {self.name} with {self.device} device")
-
 
     def get_state(self, game, player):
         start = time.time()
@@ -1839,7 +1250,6 @@ class Agent_alpha_8:
 
         return state
 
-
     def get_action(self, state):
         # tradeoff exploration / exploitation
         final_action = [0, 0, 0, 0, 0, 0]
@@ -1857,8 +1267,7 @@ class Agent_alpha_8:
             final_action[action] = 1
 
         return final_action
-    
-    
+     
     #method to perform only model prediction in game
     def perform_action(self, state):
         # tradeoff exploration / exploitation
@@ -1875,8 +1284,14 @@ class Agent_alpha_8:
     def remember(self, state, action, reward, next_state, gameover):
         self.memory.append((state, action, reward, next_state, gameover))
 
+    def train_short_memory(self, state, action, reward, next_state, gameover):
+        start = time.time()
+        state = np.array(state)
+        next_state = np.array(next_state)
+        self.trainer.train_step(state, action, reward, next_state, gameover)
+        end = time.time()
 
-    def train(self):
+    def train_long_memory(self):
         if len(self.memory) < self.batch_size:
             return
         else:
@@ -1897,7 +1312,6 @@ class Agent_alpha_8:
         self.brain.save()
 
         self.decrement_epsilon()
-
 
     def decrement_epsilon(self):
         self.epsilon = self.epsilon - self.eps_dec if self.epsilon > self.eps_min else self.eps_min
@@ -1950,7 +1364,7 @@ class Perfect_seeker_0:
 
         # perfect seeker 0 never moves walls
 
-# Agent Small_brain is an experiment, for the hider, he literally only knows if positions around him are available or not and the relative position of it's opponent + distance
+# Agent Small_brain is an experiment, for the hider, he literally only knows if positions around him are available or not and the position of it's opponent + distance
 class Small_brain_0:
     def __init__(self, name='model', Qtrainer=QTrainer_beta_1, lr=0.001, batch_size=1000, max_memory=100000, epsilon = 1.0, eps_dec= 5e-4, eps_min = 0.05):
         self.agent_name = "small_brain_0"
@@ -1973,7 +1387,6 @@ class Small_brain_0:
             print("Model loaded")
 
         print(f"AGENT ALPHA 8: training {self.name} with {self.device} device")
-
 
     def get_state(self, game, player):
         start = time.time()
@@ -2001,7 +1414,6 @@ class Small_brain_0:
 
         return state
 
-
     def get_action(self, state):
         # tradeoff exploration / exploitation
         final_action = [0, 0, 0, 0, 0, 0]
@@ -2016,7 +1428,6 @@ class Small_brain_0:
             final_action[action] = 1
 
         return final_action
-    
     
     #method to perform only model prediction in game
     def perform_action(self, state):
@@ -2034,8 +1445,14 @@ class Small_brain_0:
     def remember(self, state, action, reward, next_state, gameover):
         self.memory.append((state, action, reward, next_state, gameover))
 
+    def train_short_memory(self, state, action, reward, next_state, gameover):
+        start = time.time()
+        state = np.array(state)
+        next_state = np.array(next_state)
+        self.trainer.train_step(state, action, reward, next_state, gameover)
+        end = time.time()
 
-    def train(self):
+    def train_long_memory(self):
         if len(self.memory) < self.batch_size:
             return
         else:
@@ -2056,7 +1473,6 @@ class Small_brain_0:
         self.brain.save()
 
         self.decrement_epsilon()
-
 
     def decrement_epsilon(self):
         self.epsilon = self.epsilon - self.eps_dec if self.epsilon > self.eps_min else self.eps_min

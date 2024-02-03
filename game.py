@@ -395,6 +395,7 @@ class Game:
                 if not valid_action:
                     reward -= 10
 
+        # The most complex criterion, only works for the Hider
         elif criterion == 'smart_evasion':
             other = self.players[1] if player == self.players[0] else self.players[0]
 
@@ -407,44 +408,44 @@ class Game:
             # Euclidean distance between the two players
             distance = math.sqrt((i-i_other)**2 + (j-j_other)**2)
 
-            # Parametri
-            max_distance = 26  # Massima distanza possibile in una mappa 26x26
-            max_distance_reward_scale = 10  # Scala il reward basato sulla distanza
-            critical_distance = 5  # Distanza al di sotto della quale si applica una penalità critica
-            critical_distance_penalty = 50  # Penalità per vicinanza critica
-            survival_reward_increment = 0.1  # Reward incrementale per sopravvivenza per timestep
-            invalid_action_penalty = 1  # Penalità per movimento non valido
-            successful_evasion_bonus = 20  # Bonus per aver evitato il seeker per l'intera durata del gioco
+            # Heuristics for reward calculation
+            max_distance = 26  # Side of a 26x26 map
+            max_distance_reward_scale = 10  # Scale reward based on distance
+            critical_distance = 5  # Minimum distance to be considered critical
+            critical_distance_penalty = 50  # Critical distance penalty
+            survival_reward_increment = 0.1  # Survival reward increment
+            invalid_action_penalty = 1  # Non valid action penalty
+            successful_evasion_bonus = 20  # Winning bonus
 
-            # Applica la logica di reward
+            # HIDER ONLY POLICY
             if player.obj_type == 'hider':
-                # Reward basato sulla distanza
+                
                 distance_reward = min(distance, max_distance) / max_distance_reward_scale
                 reward += distance_reward
 
-                # Penalità per vicinanza critica
+                # Critical distance penalty
                 if distance < critical_distance:
                     reward -= critical_distance_penalty
 
-                # Reward incrementale per sopravvivenza
+                # Survival reward increment
                 if other.seen == 0:
                     reward += survival_reward_increment
 
-                # Bonus per evasione riuscita
+                # Evasion reward
                 if frame >= max_time-1 and other.seen == 0:
                     reward += successful_evasion_bonus
 
             elif player.obj_type == 'seeker':
                 pass
 
-            # Penalità per azioni non valide
+            # A penalty for an invalid action
             if not valid_action:
                 reward -= invalid_action_penalty
 
 
-        # update player's reward just for log purposes
+        # Update player's reward just for log purposes
         player.reward += reward
-        # return actual reward for training purposes
+        # Return actual (single step) reward for training purposes
         return reward   
     
     # Constraints for the player's movement
