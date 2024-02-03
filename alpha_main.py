@@ -1,7 +1,7 @@
 import numpy as np
 import pygame as pg
 from game import Game
-from agent import Agent_alpha_4, Agent_alpha_5, Agent_alpha_6, Agent_alpha_7, Agent_alpha_8, Perfect_seeker_0
+from agent import Agent_alpha_4, Agent_alpha_5, Agent_alpha_6, Agent_alpha_7, Agent_alpha_8, Perfect_seeker_0, Small_brain_0
 from models import QTrainer_beta_1, QTrainer
 import sys
 import argparse
@@ -63,7 +63,7 @@ def main():
         hider_trainer = "Qtrainer"
     elif hider.Qtrainer == QTrainer_beta_1:
         hider_trainer = "QTrainer_beta_1"
-    hider_reward_criterion = 'explore'
+    hider_reward_criterion = 'smart_evasion'
     write_config(hider.agent_name, hider.name, map_name,hider_trainer, hider.lr, hider.batch_size, hider.max_memory, hider.epsilon, hider.eps_dec, hider.eps_min, hider.brain.layer_list, hider_reward_criterion)
 
     if not perfect_seeker:
@@ -142,7 +142,7 @@ def main():
             hider_state = hider.get_state(game, game.players[0])
             hider_action = hider.get_action(hider_state)
             valid_action = game.control_player(game.players[0], hider_action)
-            hider_reward = game.reward(game.players[0], valid_action, WINTIME, criterion=hider_reward_criterion)
+            hider_reward = game.reward(game.players[0], valid_action, WINTIME, frames, MAX_TIME, criterion=hider_reward_criterion)
             hider_new_state = hider.get_state(game, game.players[0])
             hider.remember(hider_state, hider_action, hider_reward, hider_new_state, gameover)
 
@@ -152,7 +152,7 @@ def main():
             seeker_state = seeker.get_state(game, game.players[1])
             seeker_action = seeker.get_action(seeker_state)
             valid_action = game.control_player(game.players[1], seeker_action)
-            seeker_reward = game.reward(game.players[1], valid_action, WINTIME, criterion=seeker_reward_criterion)
+            seeker_reward = game.reward(game.players[1], valid_action, WINTIME, frames, MAX_TIME, criterion=seeker_reward_criterion)
             seeker_new_state = seeker.get_state(game, game.players[1])
             seeker.remember(seeker_state, seeker_action, seeker_reward, seeker_new_state, gameover)
 
@@ -177,24 +177,26 @@ def main():
 
         # update screen
         if render:
+
+            if gameover or stop:
+                game.players[0].look()
+                game.players[1].look()
+
             game.screen.fill(WHITE)
             game.update(lidar = lidar, view = view, scores = scores)
             pg.display.flip()
             game.clock.tick(framerate)
-            if gameover or stop:
-                game.players[0].look()
-                game.players[1].look()
 
         if gameover or stop:
 
             # considering turn based operation, reward is only given to the agent that made the last move
             if frames % 2:
-                hider_reward = game.reward(game.players[0], valid_action, WINTIME, criterion=hider_reward_criterion)
+                hider_reward = game.reward(game.players[0], valid_action, WINTIME, frames, MAX_TIME, criterion=hider_reward_criterion)
                 hider_state = hider.get_state(game, game.players[0])
                 hider.remember(hider_state, [0,0,0,0,0,1], hider_reward, hider_state, gameover or stop)
 
             if not frames % 2 and not perfect_seeker:
-                seeker_reward = game.reward(game.players[1], valid_action, WINTIME, criterion=seeker_reward_criterion)
+                seeker_reward = game.reward(game.players[1], valid_action, WINTIME, frames, MAX_TIME, criterion=seeker_reward_criterion)
                 seeker_state = seeker.get_state(game, game.players[1])
                 seeker.remember(seeker_state, [0,0,0,0,0,1], seeker_reward, seeker_state, gameover or stop)
 
