@@ -120,7 +120,7 @@ class QTrainer:
         # Numpy arrays to tensors on the selected device
         state = torch.tensor(state, dtype=torch.float).to(self.device)
         next_state = torch.tensor(next_state, dtype=torch.float).to(self.device)
-        action = torch.tensor(action, dtype=torch.int).to(self.device)
+        action = torch.tensor(action, dtype=torch.int32).to(self.device)
         reward = torch.tensor(reward, dtype=torch.float).to(self.device)
 
         # If using Q_Net

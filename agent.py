@@ -57,16 +57,16 @@ class Agent_alpha:
     # Load the memory from the file if it exists
     def init_memory(self):
         # Check if memory file exists
-        if not os.path.exists("./alpha_"+self.alpha+"/memory/" + self.name +".txt"):
+        if not os.path.exists("./alpha_"+str(self.alpha)+"/memory/" + self.name +".txt"):
             # If directory already exists, return
-            if os.path.exists("./alpha_"+self.alpha+"/memory"):
+            if os.path.exists("./alpha_"+str(self.alpha)+"/memory"):
                 return
             # Otherwise create the directory
             else:
-                os.makedirs("./alpha_"+self.alpha+"/memory")
+                os.makedirs("./alpha_"+str(self.alpha)+"/memory")
                 return
         # Recall last MAX_MEMORY lines from the memory file
-        with open("./alpha_"+self.alpha+"/memory/" + self.name +".txt", "r") as f:
+        with open("./alpha_"+str(self.alpha)+"/memory/" + self.name +".txt", "r") as f:
             lines = f.readlines()
             if len(lines) > MAX_MEMORY:
                 lines = lines[-MAX_MEMORY:]
@@ -74,14 +74,14 @@ class Agent_alpha:
                 state, action, reward, next_state, gameover = line.split(";")
                 state = np.array(state[1:-1].split(","), dtype=np.float32)
                 action = np.array(action[1:-1].split(","), dtype=np.int32)
-                reward = np.array(float(reward), dtype=np.float32)
+                reward = np.array(reward, dtype=np.float32)
                 next_state = np.array(next_state[1:-1].split(","), dtype=np.float32)
                 gameover = np.array(gameover == 'True')
                 self.memory.append((state, action, reward, next_state, gameover))
 
     # Load the replay memory SELECTIVELY from the file (when  the function is called the file already exists)
     def load_replay_memory(self, criterion="reward"):
-        with open("./alpha_"+self.alpha+"/memory/" + self.name +".txt", "r") as f:
+        with open("./alpha_"+str(self.alpha)+"/memory/" + self.name +".txt", "r") as f:
             # Define different sorting criteria for existing memory - note: in memory "reward" is the 3rd element of the lines
             if criterion == "abs_reward":
                 crit = lambda x: abs(float(x.split(";")[2]))    # highest reward's absolute value
@@ -335,10 +335,9 @@ class Agent_alpha:
     def get_action(self, state):
         start = time.time()
         # tradeoff exploration / exploitation
-        self.epsilon -= self.n_games
-        final_action = [0,0,0,0,0]
+        final_action = [0 for i in range(self.brain.layer_list[-1])]
         if random.randint(0, 200) < self.epsilon:   # 200 is arbitrary
-            action = random.randint(0, 4)
+            action = random.randint(0, (self.brain.layer_list[-1]-1))
             final_action[action] = 1
         else:
             state = np.array(state)
@@ -355,7 +354,7 @@ class Agent_alpha:
     def remember(self, state, action, reward, next_state, gameover):
         self.memory.append((state, action, reward, next_state, gameover))
         # append to a certain file
-        with open("./alpha_0/memory/" + self.name +".txt", "a") as f:
+        with open("./alpha_"+str(self.alpha)+"/memory/" + self.name +".txt", "a") as f:
             f.write(str(state) + ";")
             f.write(str(action) + ";")
             f.write(str(reward) + ";")
@@ -372,6 +371,7 @@ class Agent_alpha:
 
     def train_long_memory(self):
         start = time.time()
+        if self.epsilon > 0 : self.epsilon -= 1 
         if len(self.memory) > self.batch_size:
             batch_sample = random.sample(self.memory, self.batch_size)
             ''' Loss of the exploration phase in the long run
@@ -423,7 +423,7 @@ class Agent_alpha:
     def clean_memory(self, duplicates=100):
         start = time.time()
         # clean identical lines if number is over
-        file_path = "./alpha_0/memory/" + self.name + ".txt"
+        file_path = "./alpha_"+str(self.alpha)+"/memory/" + self.name + ".txt"
         with open(file_path, "r") as f:
             lines = f.readlines()
         count = 0
