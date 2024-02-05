@@ -17,7 +17,7 @@ LR = 0.0005
 # Agent Alpha includes the first tests with agents 0, 1, 2 and 3:
     # Agent Alpha 0 is the first complete prototype, every piece work but learning seems capped by input encoding or other unknown factors
     # Agent Alpha 1 is the second complete prototype, the aim is to improve the input encoding narrowing the possible existing problems with alpha 0
-    # Agent Alpha 2, comes to life after considerations made on hivemind 0 prototype, what about mimicking other examples of the same game? the state space is completely changed again in advantage of a coordinate/distance representation
+    # Agent Alpha 2 comes to life after considerations made on hivemind prototypes, what about mimicking other examples of the same game? the state space is completely changed again in advantage of a coordinate/distance representation
     # Agent Alpha 3 is a test on the alpha 1 encoding, the state is the same but removing the position and the direction to obtain a simpler representation
 class Agent_alpha:
     def __init__(self, alpha=0, name='model', Qtrainer=QTrainer, lr = LR, batch_size = BATCH_SIZE, max_memory = MAX_MEMORY):
@@ -92,8 +92,8 @@ class Agent_alpha:
             elif criterion == "neg_reward":
                 crit = lambda x: float(x.split(";")[2])         # lowest rewards
                 reverse = False
-            elif criterion == "lowest_abs_reward":              # lowest reward's absolute value
-                crit = lambda x: abs(float(x.split(";")[2]))
+            elif criterion == "lowest_abs_reward":
+                crit = lambda x: abs(float(x.split(";")[2]))    # lowest reward's absolute value
                 reverse = False
 
             # Note: the lines are picked from the bottom of the file -> reverse = True picks the highest values
@@ -111,7 +111,8 @@ class Agent_alpha:
             next_state = np.array(next_state[1:-1].split(","), dtype=np.float32)
             gameover = np.array(gameover == 'True')
             self.replay_memory.append((state, action, reward, next_state, gameover))
-                
+
+    # Get the state of the game for the agent - Using different encodings/data for different alpha generations       
     def get_state(self, game, player):
         x = player.x
         y = player.y
@@ -119,13 +120,19 @@ class Agent_alpha:
         i = y // player.size
         j = x // player.size
 
+        # Alpha 0
         if self.alpha == 0:
+            # Normalized position of the player
             x_norm = player.x / (game.width - player.size)
             y_norm = player.y / (game.height - player.size)
-            # quadrati adiacenti in base alla direction del player
+
+            # What the player sees according to policy
             view = player.view
+
+            # One-hot encoding of all the object types - None is either outside the map or out of the player's view (hidden by an object) - Player.mask_view()
             objects = {'wall': '10000', 'floor': '01000', 'hider': '00100', 'movable_wall': '00010','seeker': '00001', None: '00000'}
-            # ["wall", "floor", "hider", "movable_wall", None]
+
+            # Encode the view
             view_vector = []
             for l in view:
                 for c in l:
@@ -136,29 +143,31 @@ class Agent_alpha:
                         for n in objects[c.obj_type]:
                             view_vector.append(int(n))
 
-            neighbourhood = [] # left back right
-            i = y // player.size
-            j = x // player.size
-            if player.direction == 'u':
+            # Depending on player's direction the neighbourhood is composed of the 3 cells around the player (except for the faced one)
+            neighbourhood = []      # Order - left back right
+
+            # None is outside of the map
+            if player.direction == 'u':     # up
                 left = player.map[i][j-1].obj_type if j-1 >= 0 else None
                 back = player.map[i+1][j].obj_type if i+1 < game.rows else None
                 right = player.map[i][j+1].obj_type if j+1 < game.cols else None
 
-            elif player.direction == 'd':
+            elif player.direction == 'd':       # down
                 left = player.map[i][j+1].obj_type if j+1 < game.cols else None
                 back = player.map[i-1][j].obj_type if i-1 >= 0 else None
                 right = player.map[i][j-1].obj_type if j-1 >= 0 else None
 
-            elif player.direction == 'l':
+            elif player.direction == 'l':       # left
                 left = player.map[i+1][j].obj_type if i+1 < game.rows else None
                 back = player.map[i][j+1].obj_type if j+1 < game.cols else None
                 right = player.map[i-1][j].obj_type if i-1 >= 0 else None
 
-            elif player.direction == 'r':
+            elif player.direction == 'r':       # right
                 left = player.map[i-1][j].obj_type if i-1 >= 0 else None
                 back = player.map[i][j-1].obj_type if j-1 >= 0 else None
                 right = player.map[i+1][j].obj_type if i+1 < game.rows else None
             
+            # Encode the neighbourhood
             for n in objects[left]:
                 neighbourhood.append(int(n))
             for n in objects[back]:
@@ -166,20 +175,22 @@ class Agent_alpha:
             for n in objects[right]:
                 neighbourhood.append(int(n))
 
-            # as a test, acquire other player's position
-            # and normalize it
+            # Other player's position and normalization
             other_player = game.players[0] if player.obj_type == 'seeker' else game.players[1]
             other_player_x = other_player.x / (game.width - other_player.size)
             other_player_y = other_player.y / (game.height - other_player.size)
 
 
             state = [x_norm,y_norm] + view_vector + neighbourhood + [other_player_x, other_player_y]
-
+        # Alpha 1
         elif self.alpha == 1:
-
+            # What the player sees according to policy
             view = player.view
+
+            # Encoding of all the object types - None is either outside the map or out of the player's view (hidden by an object) - Player.mask_view()
             objects = {'wall': '5', 'floor': '1', 'hider': '100', 'movable_wall': '10','seeker': '100', None: '0'}
-            # ["wall", "floor", "hider", "movable_wall", None]
+            
+            # Encode the view
             view_vector = []
             for l in view:
                 for c in l:
@@ -187,60 +198,73 @@ class Agent_alpha:
                         view_vector.append(int(objects[c]))
                     else:
                         view_vector.append(int(objects[c.obj_type]))
-
+                        
+            # Depending on player's direction the neighbourhood is composed of the 3 cells around the player (except for the faced one)
             neighbourhood = [] # left back right
 
-            if player.direction == 'u':
+            # None is outside of the map
+            if player.direction == 'u':         # up
                 left = player.map[i][j-1].obj_type if j-1 >= 0 else None
                 back = player.map[i+1][j].obj_type if i+1 < game.rows else None
                 right = player.map[i][j+1].obj_type if j+1 < game.cols else None
 
-            elif player.direction == 'd':
+            elif player.direction == 'd':       # down
                 left = player.map[i][j+1].obj_type if j+1 < game.cols else None
                 back = player.map[i-1][j].obj_type if i-1 >= 0 else None
                 right = player.map[i][j-1].obj_type if j-1 >= 0 else None
 
-            elif player.direction == 'l':
+            elif player.direction == 'l':       # left
                 left = player.map[i+1][j].obj_type if i+1 < game.rows else None
                 back = player.map[i][j+1].obj_type if j+1 < game.cols else None
                 right = player.map[i-1][j].obj_type if i-1 >= 0 else None
 
-            elif player.direction == 'r':
+            elif player.direction == 'r':       # right
                 left = player.map[i-1][j].obj_type if i-1 >= 0 else None
                 back = player.map[i][j-1].obj_type if j-1 >= 0 else None
                 right = player.map[i+1][j].obj_type if i+1 < game.rows else None
             
+            # Encode the neighbourhood
             neighbourhood.append(int(objects[left]))
             neighbourhood.append(int(objects[back]))
             neighbourhood.append(int(objects[right]))
 
-            # as a test, acquire other player's position
-            # and normalize it
+            # Other player's position and normalization
             other_player = game.players[0] if player.obj_type == 'seeker' else game.players[1]
             other_player_i = other_player.y // other_player.size
             other_player_j = other_player.x // other_player.size
 
 
             state = [i,j] + view_vector + neighbourhood + [other_player_i, other_player_j]
-
+        # Alpha 2
         elif self.alpha == 2:
+
+            # Other player's position and normalization
             other_player = game.players[0] if player.obj_type == 'seeker' else game.players[1]
             other_player_i = other_player.y // other_player.size
             other_player_j = other_player.x // other_player.size
-            distance = np.sqrt((other_player_i - i)**2 + (other_player_j - j)**2)
-            direction = player.direction
 
-            if direction == 'u':
+            # Euclidean distance from the other player
+            distance = np.sqrt((other_player_i - i)**2 + (other_player_j - j)**2)
+            # Normalization of the distance
+            distance = distance / (game.rows * np.sqrt(2))    # Assuming a square map
+
+            # Direction of the player
+            if player.direction == 'u':
                 direction = 0
-            elif direction == 'd':
+            elif player.direction == 'd':
                 direction = 1
-            elif direction == 'l':
+            elif player.direction == 'l':
                 direction = 2
-            elif direction == 'r':
+            elif player.direction == 'r':
                 direction = 3
 
+            # Encoding of all the object types - None is either outside the map or out of the player's view (hidden by an object) - Player.mask_view()
             objects = {'wall': '5', 'floor': '1', 'hider': '100', 'movable_wall': '10','seeker': '100', None: '0'}
+
+            # What the player sees according to policy
             view = player.view
+
+            # Encode the view
             view_vector = []
             for l in view:
                 for c in l:
@@ -249,24 +273,26 @@ class Agent_alpha:
                     else:
                         view_vector.append(int(objects[c.obj_type])/100)
 
-            neighbourhood = [] # left back right
+            # Depending on player's direction the neighbourhood is composed of the 3 cells around the player (except for the faced one)
+            neighbourhood = []
 
-            if player.direction == 'u':
+            # None is outside of the map
+            if player.direction == 'u':         # up
                 left = player.map[i][j-1].obj_type if j-1 >= 0 else None
                 back = player.map[i+1][j].obj_type if i+1 < game.rows else None
                 right = player.map[i][j+1].obj_type if j+1 < game.cols else None
 
-            elif player.direction == 'd':
+            elif player.direction == 'd':       # down
                 left = player.map[i][j+1].obj_type if j+1 < game.cols else None
                 back = player.map[i-1][j].obj_type if i-1 >= 0 else None
                 right = player.map[i][j-1].obj_type if j-1 >= 0 else None
 
-            elif player.direction == 'l':
+            elif player.direction == 'l':       # left
                 left = player.map[i+1][j].obj_type if i+1 < game.rows else None
                 back = player.map[i][j+1].obj_type if j+1 < game.cols else None
                 right = player.map[i-1][j].obj_type if i-1 >= 0 else None
 
-            elif player.direction == 'r':
+            elif player.direction == 'r':       # right
                 left = player.map[i-1][j].obj_type if i-1 >= 0 else None
                 back = player.map[i][j-1].obj_type if j-1 >= 0 else None
                 right = player.map[i+1][j].obj_type if i+1 < game.rows else None
@@ -274,21 +300,22 @@ class Agent_alpha:
             neighbourhood.append(int(objects[left]))
             neighbourhood.append(int(objects[back]))
             neighbourhood.append(int(objects[right]))
-            
-            # normalize everything
-            i = i / game.rows
-            j = j / game.cols
-            distance = distance / (game.rows + game.cols)
-            other_player_i = other_player_i / game.rows
-            other_player_j = other_player_j / game.cols
+
+            # Other player's position and normalization
+            other_player_i = other_player_i / (game.rows - 1)
+            other_player_j = other_player_j / (game.cols - 1)
 
             state = [i,j] + view_vector + neighbourhood + [distance, direction] + [other_player_i, other_player_j]
-
+        # Alpha 3
         elif self.alpha == 3:
 
+            # What the player sees according to policy
             view = player.view
+
+            # One-hot encoding of all the object types - None is either outside the map or out of the player's view (hidden by an object) - Player.mask_view()
             objects = {'wall': '10000', 'floor': '01000', 'hider': '00100', 'movable_wall': '00010', 'seeker': '00001', None: '00000'}
-            # ["wall", "floor", "hider", "movable_wall", None]
+            
+            # Encode the view
             view_vector = []
             for l in view:
                 for c in l:
@@ -298,29 +325,32 @@ class Agent_alpha:
                     else:
                         for n in objects[c.obj_type]:
                             view_vector.append(int(n))
+            
+            # Depending on player's direction the neighbourhood is composed of the 3 cells around the player (except for the faced one)
+            neighbourhood = []
 
-            neighbourhood = []  # left back right
-
-            if player.direction == 'u':
+            # None is outside of the map
+            if player.direction == 'u':         # up
                 left = player.map[i][j - 1].obj_type if j - 1 >= 0 else None
                 back = player.map[i + 1][j].obj_type if i + 1 < game.rows else None
                 right = player.map[i][j + 1].obj_type if j + 1 < game.cols else None
 
-            elif player.direction == 'd':
+            elif player.direction == 'd':       # down
                 left = player.map[i][j + 1].obj_type if j + 1 < game.cols else None
                 back = player.map[i - 1][j].obj_type if i - 1 >= 0 else None
                 right = player.map[i][j - 1].obj_type if j - 1 >= 0 else None
 
-            elif player.direction == 'l':
+            elif player.direction == 'l':       # left
                 left = player.map[i + 1][j].obj_type if i + 1 < game.rows else None
                 back = player.map[i][j + 1].obj_type if j + 1 < game.cols else None
                 right = player.map[i - 1][j].obj_type if i - 1 >= 0 else None
 
-            elif player.direction == 'r':
+            elif player.direction == 'r':       # right
                 left = player.map[i - 1][j].obj_type if i - 1 >= 0 else None
                 back = player.map[i][j - 1].obj_type if j - 1 >= 0 else None
                 right = player.map[i + 1][j].obj_type if i + 1 < game.rows else None
 
+            # Encode the neighbourhood
             for n in objects[left]:
                 neighbourhood.append(int(n))
             for n in objects[back]:
@@ -331,29 +361,31 @@ class Agent_alpha:
             state = view_vector + neighbourhood
 
         return state
-
+    
+    # Pick the next action to take - Tradeoff exploration / exploitation
     def get_action(self, state):
-        start = time.time()
-        # tradeoff exploration / exploitation
-        final_action = [0 for i in range(self.brain.layer_list[-1])]
+        # Final action is a one-hot encoded vector
+        final_action = [0 for i in range(self.brain.layer_list[-1])]        # Not every Alpha agent employ the 6th action (standing still)
+
+        # Move randomly
         if random.randint(0, 200) < self.epsilon:   # 200 is arbitrary
             action = random.randint(0, (self.brain.layer_list[-1]-1))
             final_action[action] = 1
+
+        # Move according to the policy network
         else:
             state = np.array(state)
             current_state = torch.tensor(state, dtype=torch.float).to(self.device)
             prediction = self.brain(current_state)
             action = torch.argmax(prediction).item()
             final_action[action] = 1
-        
-        end = time.time()
-        #print("get_action: ", end - start)
 
         return final_action
 
+    # Store the experience in the agent's memory and in the memory file
     def remember(self, state, action, reward, next_state, gameover):
         self.memory.append((state, action, reward, next_state, gameover))
-        # append to a certain file
+        
         with open("./alpha_"+str(self.alpha)+"/memory/" + self.name +".txt", "a") as f:
             f.write(str(state) + ";")
             f.write(str(action) + ";")
@@ -361,30 +393,32 @@ class Agent_alpha:
             f.write(str(next_state) + ";")
             f.write(str(gameover) + "\n")
 
+    # Online training - Short term memory
     def train_short_memory(self, state, action, reward, next_state, gameover):
-        start = time.time()
+        # Cast to numpy arrays for the torch.tensor conversion
         state = np.array(state)
         next_state = np.array(next_state)
+        action = np.array(action)
         self.trainer.train_step(state, action, reward, next_state, gameover)
-        end = time.time()
-        #print("train_short_memory: ", end - start)
 
+    # Batch training - Long term memory
     def train_long_memory(self):
         start = time.time()
+        # Decrease exploration probability
         if self.epsilon > 0 : self.epsilon -= 1 
+
+        # Sample a random batch from the memory
         if len(self.memory) > self.batch_size:
             batch_sample = random.sample(self.memory, self.batch_size)
-            ''' Loss of the exploration phase in the long run
-            batch_sample = []
-            for i in range(len(self.memory)-1, len(self.memory) - 1 - BATCH_SIZE, -1):
-                batch_sample.append(self.memory[i])
-            '''
+
+        # If the memory is not big enough, train on the whole memory
         else:
             batch_sample = self.memory
 
+        # Separate the batch into its components
         states, actions, rewards, next_states, gameovers = zip(*batch_sample)
 
-        # convert to numpy arrays
+        # Convert to numpy arrays for the torch.tensor conversion
         states = np.array(states)
         actions = np.array(actions)
         rewards = np.array(rewards)
@@ -393,19 +427,25 @@ class Agent_alpha:
 
         self.trainer.train_step(states, actions, rewards, next_states, gameovers)
 
+        # Save the model
         self.brain.save()
+
+        # Log time took for training
         end = time.time()
         if self.name == "seeker": print(f"\033[94mtraning seeker's long memory took: {end - start} seconds\033[0m")
         else: print(f"\033[92mtraning hider's long memory took: {end - start} seconds\033[0m")
 
+    # Replay training - Selective memory
     def train_replay(self, criterion="reward"):
         start = time.time()
 
+        # Load the replay memory according to the criterion
         self.load_replay_memory(criterion)
 
+        # Separate the replay memory into its components
         states, actions, rewards, next_states, gameovers = zip(*self.replay_memory)
 
-        # convert to numpy arrays
+        # Convert to numpy arrays for the torch.tensor conversion
         states = np.array(states)
         actions = np.array(actions)
         rewards = np.array(rewards)
@@ -414,25 +454,32 @@ class Agent_alpha:
 
         self.trainer.train_step(states, actions, rewards, next_states, gameovers)
 
+        # Log time took for training
         end = time.time()
         print("+"*50)
         print(f"\033[96mtrain_replay with {criterion} criterion in: {end - start} seconds\033[0m")
         print("+"*50)
-        self.replay_memory = []
 
+        # Reset the replay memory for next training
+        self.replay_memory = []
+    
+    # Clean the memory file from perfectly identical consecutive lines if their number is over a certain threshold
     def clean_memory(self, duplicates=100):
         start = time.time()
-        # clean identical lines if number is over
+
         file_path = "./alpha_"+str(self.alpha)+"/memory/" + self.name + ".txt"
         with open(file_path, "r") as f:
             lines = f.readlines()
+        
         count = 0
         erased = 0
+
         i = 0
         while i < len(lines) - 1:
             if lines[i] == lines[i + 1]:
                 count += 1
                 if count == duplicates:
+                                    # First duplicate     # Next value
                     lines = lines[:i - duplicates + 2] + lines[i + 1:]
                     count = 0
                     erased += duplicates
@@ -440,30 +487,40 @@ class Agent_alpha:
                 count = 0
             i += 1
 
+        # Update the memory file
         with open(file_path, "w") as f:
             f.writelines(lines)
 
+        # Log time took for cleaning
         end = time.time()
         print("#" * 50)
         print(f"\033[92mclean_memory for {self.name}, erased {erased} lines in: ", end - start, " seconds\033[0m")
         print("#" * 50)
 
 # Hivemind, as the name suggests, is meant to be able to predict next action taking into account the whole map image - It's the only Agent that takes advantage of the Convolutional Neural Network
-class Agent_hivemind_0:
+class Agent_hivemind:
     def __init__(self, name='model', Qtrainer=QTrainer, lr = LR, batch_size = BATCH_SIZE, max_memory = MAX_MEMORY):
-        self.agent_name = "hivemind_0"
+        # Agent name is used to save and load the model, configs and memory
+        self.agent_name = "hivemind"
+        # Seeker or Hider
         self.name = name
+        # Q_trainer class is instantiated without parameters to include it in the config file
         self.Qtrainer = Qtrainer
+
+        # Agent hyperparameters
         self.lr = lr
         self.batch_size = batch_size
         self.max_memory = max_memory
-        self.n_games = 0
-        self.epsilon = 0 # randomness
-        self.randomness = 200
-        self.gamma = 0.9 # discount rate
-        self.memory = deque(maxlen=self.max_memory) # automatic popleft()
-        self.init_memory() # reload all previous memories up to MAX_MEMORY
-        self.replay_memory = []
+        self.n_games = 0    # number of games played
+        self.epsilon = 200  # randomness
+        self.gamma = 0.9    # future expected reward discount rate
+
+        # Agent long term and replay memory
+        self.memory = deque(maxlen=self.max_memory)         # agent memory, queue with maxlen to automatically pop left
+        self.init_memory()                                  # reload all previous memeories up to MAX_MEMORY from the memory file
+        self.replay_memory = []                             # a memory buffer to selectively recollect previous experiences
+
+        # Neural network and trainer instantiation
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         # brain designed for a 26x26 map
         self.brain = ConvQNet([[1, 3, 3, 1, 1], [3, 1, 9, 1, 0], [1, 1, 7, 1, 0], [1, 1, 5, 1, 0]], [64, 128, 128, 6], self.agent_name, self.name).to(self.device)
@@ -473,7 +530,7 @@ class Agent_hivemind_0:
         if self.brain.load():
             print("Model loaded")
 
-        print(f"AGENT HIVEMIND 0: training {self.name} with {self.device} device")
+        print(f"AGENT HIVEMIND: training {self.name} with {self.device} device")
         
     def init_memory(self):
         # check if memory file exists
@@ -542,6 +599,7 @@ class Agent_hivemind_0:
         start = time.time()
         # tradeoff exploration / exploitation
         self.epsilon = self.randomness - self.n_games
+        # Final action is a one-hot encoded vector
         final_action = [0,0,0,0,0,0]
         if random.randint(0, 200) < self.epsilon:   # 200 is arbitrary
             action = random.randint(0, 5)
