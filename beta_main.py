@@ -1,7 +1,7 @@
 import numpy as np
 import pygame as pg
 from game import Game
-from agent import Agent_alpha_4, Agent_alpha_5, Agent_alpha_6, Agent_alpha_7, Agent_alpha_8, Perfect_seeker_0, Small_brain_0
+from agent import Agent_beta, Perfect_seeker_0, Small_brain_0
 from models import QTrainer_beta_1, QTrainer
 import sys
 import argparse

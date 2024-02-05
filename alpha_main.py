@@ -2,7 +2,7 @@
 import pygame as pg
 import numpy as np
 from game import Game
-from agent import Agent_alpha, Agent_hivemind_0
+from agent import Agent_alpha, Agent_hivemind
 from models import QTrainer, QTrainer_beta_1
 import sys
 import argparse

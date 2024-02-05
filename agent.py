@@ -1095,9 +1095,10 @@ class Agent_beta:
 # Agent Perfect_seeker is a cheater, never lend him your money, he uses no neural model or learn at all but in empty maps is really good at finding hiders
 class Perfect_seeker_0:
     def __init__(self, name='model'):
+
         self.agent_name = "perfect_seeker_0"
         self.name = name
-        self.n_games = 0
+        self.n_games = 0        # Number of games played
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         print(f"AGENT PERFECT SEEKER 0: playing as {self.name}")
 
@@ -1105,6 +1106,7 @@ class Perfect_seeker_0:
     def get_state(self, game, player):
         return {"player": player, "other": game.players[0]}
 
+    # Based on relative position take an action to reach your opponent
     def get_action(self, state):
         # strategy: move towards the hider one step at a time
         other = state["other"]
@@ -1144,28 +1146,31 @@ class Perfect_seeker_0:
 class Small_brain_0:
     def __init__(self, name='model', Qtrainer=QTrainer_beta_1, lr=0.001, batch_size=1000, max_memory=100000, epsilon = 1.0, eps_dec= 5e-4, eps_min = 0.05):
         self.agent_name = "small_brain_0"
+        # Seeker or Hider
         self.name = name
+        # Qtrainer class is instantiated without parameters to include it in the config file
         self.Qtrainer = Qtrainer
+        # Agent hyperparameters
         self.lr = lr
         self.batch_size = batch_size
         self.max_memory = max_memory
-        self.n_games = 0
-        self.epsilon = epsilon
-        self.eps_dec = eps_dec
-        self.eps_min = eps_min
-        self.gamma = 0.9  # discount rate
-        self.memory = deque(maxlen=self.max_memory)  # automatic popleft()
+        self.n_games = 0        # number of games played
+        self.epsilon = epsilon      # randomness
+        self.eps_dec = eps_dec      # epsilon decrement
+        self.eps_min = eps_min      # minimum epsilon (to keep some degree of exploration)
+        self.gamma = 0.9        # future expected reward discount rate
+        self.memory = deque(maxlen=self.max_memory)     # agent memory, queue with maxlen to automatically popleft
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.brain = QNet([9, 32, 32, 6], self.agent_name, self.name).to(self.device)
         self.trainer = self.Qtrainer(self.brain, self.lr, self.gamma)
-
+        # Load the model if it exists
         if self.brain.load():
             print("Model loaded")
 
-        print(f"AGENT ALPHA 8: training {self.name} with {self.device} device")
+        print(f"AGENT SMALL_BRAIN_0: training {self.name} with {self.device} device")
 
+    # Get the state of the game for the agent 
     def get_state(self, game, player):
-        start = time.time()
         x = player.x
         y = player.y
         i = y // player.size
@@ -1175,8 +1180,8 @@ class Small_brain_0:
         other_player_i = other_player.y // other_player.size
         other_player_j = other_player.x // other_player.size
 
+        # Available positions for the next taken action - {'sx': False, 'dx': False, 'u':False, 'd':False}
         av = game.check_available_positions(player)
-        #av = {'sx': False, 'dx': False, 'u':False, 'd':False}
         
         av_pos = [int(av['u']), int(av['dx']), int(av['d']), int(av['sx'])]
         rel_distance = np.sqrt((other_player_i - i)**2 + (other_player_j - j)**2) / (game.rows + game.cols)
@@ -1190,54 +1195,49 @@ class Small_brain_0:
 
         return state
 
+    # Pich the next action to take
     def get_action(self, state):
-        # tradeoff exploration / exploitation
+        # Final action is one-hot encoded vector
         final_action = [0, 0, 0, 0, 0, 0]
+        # Move randomly
         if np.random.random() > self.epsilon:
             state = np.array(state)
             current_state = torch.tensor(state, dtype=torch.float).to(self.device)
             prediction = self.brain(current_state)
             action = torch.argmax(prediction).item()
             final_action[action] = 1
+        # Moving according to the policy network
         else:
             action = random.randint(0, 5)
             final_action[action] = 1
 
         return final_action
     
-    #method to perform only model prediction in game
-    def perform_action(self, state):
-        # tradeoff exploration / exploitation
-        final_action = [0, 0, 0, 0, 0, 0]
-        
-        state = np.array(state)
-        current_state = torch.tensor(state, dtype=torch.float).to(self.device)
-        prediction = self.brain(current_state)
-        action = torch.argmax(prediction).item()
-        final_action[action] = 1
-
-        return final_action
-
+    # Store the experience in the agent's memory
     def remember(self, state, action, reward, next_state, gameover):
         self.memory.append((state, action, reward, next_state, gameover))
 
+    # Online training - short term memory
     def train_short_memory(self, state, action, reward, next_state, gameover):
-        start = time.time()
+        # Cast numpy arrays for the torch.tensor conversion 
         state = np.array(state)
         next_state = np.array(next_state)
+        action = np.array(action)
         self.trainer.train_step(state, action, reward, next_state, gameover)
-        end = time.time()
 
+    # Batch training - long term memory
     def train_long_memory(self):
+        # if the memory is not big enough, skip training 
         if len(self.memory) < self.batch_size:
             return
+        # Sample a random batch from the memory
         else:
             batch_sample = random.sample(self.memory, self.batch_size)
 
+        # Separate the batch into its components
         states, actions, rewards, next_states, gameovers = zip(*batch_sample)
-        #print('pre : ', type(states), len(states), len(states[0]),'\n')
 
-        # convert to numpy arrays
+        # Cast numpy arrays for the torch.tensor conversion 
         states = np.array(states)
         actions = np.array(actions)
         rewards = np.array(rewards)
@@ -1246,9 +1246,12 @@ class Small_brain_0:
 
         self.trainer.train_step(states, actions, rewards, next_states, gameovers)
 
+        # Save the model
         self.brain.save()
 
+        # Decrease the epsilon
         self.decrement_epsilon()
 
+    # Decrease epsilon
     def decrement_epsilon(self):
         self.epsilon = self.epsilon - self.eps_dec if self.epsilon > self.eps_min else self.eps_min
