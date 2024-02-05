@@ -28,7 +28,6 @@ def main():
     parser.add_argument('--random_spawn', action='store_true', help='spawn players randomly')
     args = parser.parse_args()
 
-
     hide = args.hide
     seek = args.seek
     perfect_seeker = args.perfect_seeker
@@ -55,8 +54,8 @@ def main():
     game = Game(26, 26, 40, map_name, random_spawn)
 
     # Init Agents
-    hider = Agent_beta(3, 'hider', lr=0.0005, batch_size=5000,max_memory=1000000, eps_dec=2e-4, eps_min=0.15)
-    seeker = Agent_beta(3, 'seeker', lr=0.0005, batch_size=5000,max_memory=1000000, eps_dec=2e-4, eps_min=0.15) if not perfect_seeker else Perfect_seeker_0('seeker')
+    hider = Agent_beta(beta=4, name='hider', lr=0.0005, batch_size=5000,max_memory=1000000, eps_dec=2e-4, eps_min=0.15)
+    seeker = Agent_beta(beta=4, name='seeker', lr=0.0005, batch_size=5000,max_memory=1000000, eps_dec=2e-4, eps_min=0.15) if not perfect_seeker else Perfect_seeker_0('seeker')
     
     hider_trainer = ""
     if hider.Qtrainer == QTrainer:
@@ -64,9 +63,10 @@ def main():
     elif hider.Qtrainer == QTrainer_beta_1:
         hider_trainer = "QTrainer_beta_1"
     hider_reward_criterion = 'smart_evasion'
-    write_config(hider.agent_name, hider.name, map_name,hider_trainer, hider.lr, hider.batch_size, hider.max_memory, hider.epsilon, hider.eps_dec, hider.eps_min, hider.brain.layer_list, hider_reward_criterion)
+    if hide:
+        write_config(hider.agent_name, hider.name, map_name, hider_trainer, hider.lr, hider.batch_size, hider.max_memory, hider.epsilon, hider.eps_dec, hider.eps_min, hider.brain.layer_list, hider_reward_criterion)
 
-    if not perfect_seeker:
+    if not perfect_seeker and seek:
         seeker_trainer = ""
         if seeker.Qtrainer == QTrainer:
             seeker_trainer = "Qtrainer"
@@ -190,12 +190,12 @@ def main():
         if gameover or stop:
 
             # considering turn based operation, reward is only given to the agent that made the last move
-            if frames % 2:
+            if frames % 2 and hide:
                 hider_reward = game.reward(game.players[0], valid_action, WINTIME, frames, MAX_TIME, criterion=hider_reward_criterion)
                 hider_state = hider.get_state(game, game.players[0])
                 hider.remember(hider_state, [0,0,0,0,0,1], hider_reward, hider_state, gameover or stop)
 
-            if not frames % 2 and not perfect_seeker:
+            if not frames % 2 and not perfect_seeker and seek:
                 seeker_reward = game.reward(game.players[1], valid_action, WINTIME, frames, MAX_TIME, criterion=seeker_reward_criterion)
                 seeker_state = seeker.get_state(game, game.players[1])
                 seeker.remember(seeker_state, [0,0,0,0,0,1], seeker_reward, seeker_state, gameover or stop)
@@ -205,24 +205,26 @@ def main():
             print("*" * 50)
             print(f"Generation: {seeker.n_games}")
             print("Exploring and Exploiting with:")
-            print(f"\033[92mHider Epsilon: {hider.epsilon}\033[0m")
-            print(f"\033[92mHider Reward: {game.players[0].reward}\033[0m")
-            if not perfect_seeker: 
+            if hide:
+                print(f"\033[92mHider Epsilon: {hider.epsilon}\033[0m")
+                print(f"\033[92mHider Reward: {game.players[0].reward}\033[0m")
+            if not perfect_seeker and seek: 
                 print(f"\033[94mSeeker Epsilon: {seeker.epsilon}\033[0m")
                 print(f"\033[94mSeeker Reward: {game.players[1].reward}\033[0m")
                 
+            if hide:
+                hider_file_path = "./" + hider.agent_name + "/reward/reward_" + hider.name + ".txt"
+                if not os.path.exists("./" + hider.agent_name + "/reward"):
+                    os.makedirs("./" + hider.agent_name + "/reward")
+                with open(hider_file_path, "a") as f:
+                    f.write(str(game.players[0].reward) + ";")
 
-            hider_file_path = "./" + hider.agent_name + "/reward/reward_" + hider.name + ".txt"
-            if not os.path.exists("./" + hider.agent_name + "/reward"):
-                os.makedirs("./" + hider.agent_name + "/reward")
-            with open(hider_file_path, "a") as f:
-                f.write(str(game.players[0].reward) + ";")
-
-            seeker_file_path = "./" + seeker.agent_name + "/reward/reward_" + seeker.name + ".txt"
-            if not os.path.exists("./" + seeker.agent_name + "/reward"):
-                os.makedirs("./" + seeker.agent_name + "/reward")
-            with open(seeker_file_path, "a") as f:
-                f.write(str(game.players[1].reward) + ";")
+            if seek:
+                seeker_file_path = "./" + seeker.agent_name + "/reward/reward_" + seeker.name + ".txt"
+                if not os.path.exists("./" + seeker.agent_name + "/reward"):
+                    os.makedirs("./" + seeker.agent_name + "/reward")
+                with open(seeker_file_path, "a") as f:
+                    f.write(str(game.players[1].reward) + ";")
 
 
             if hide: hider.train_long_memory()
@@ -232,7 +234,7 @@ def main():
             hider.n_games += 1
             seeker.n_games += 1
 
-            if not perfect_seeker:
+            if not perfect_seeker and seek:
                 seeker_rewards.append(game.players[1].reward)
                 seeker_eps_history.append(seeker.epsilon)
                 seeker_avg_reward = np.mean(seeker_rewards[-100:])
@@ -243,16 +245,16 @@ def main():
                     x = [i + 1 for i in range(seeker.n_games)]
                     plot_learning_curve(x, seeker_rewards, seeker_eps_history, seeker_filename, seeker.agent_name, 'Seeker')
 
-            
-            hider_rewards.append(game.players[0].reward)
-            hider_eps_history.append(hider.epsilon)
-            hider_avg_reward = np.mean(hider_rewards[-100:])
-            print('Game: ', hider.n_games, ' Hider reward %.2f' % game.players[0].reward, 'average reward %.2f' % hider_avg_reward, 'epsilon %.2f' % hider.epsilon)
+            if hide:
+                hider_rewards.append(game.players[0].reward)
+                hider_eps_history.append(hider.epsilon)
+                hider_avg_reward = np.mean(hider_rewards[-100:])
+                print('Game: ', hider.n_games, ' Hider reward %.2f' % game.players[0].reward, 'average reward %.2f' % hider_avg_reward, 'epsilon %.2f' % hider.epsilon)
 
-            hider_filename = 'hider_'+hider.agent_name+'.png'
-            if hider.n_games % 10 == 0 and hider.n_games != 0:
-                x = [i + 1 for i in range(hider.n_games)]
-                plot_learning_curve(x, hider_rewards, hider_eps_history, hider_filename, hider.agent_name, 'Hider')
+                hider_filename = 'hider_'+hider.agent_name+'.png'
+                if hider.n_games % 10 == 0 and hider.n_games != 0:
+                    x = [i + 1 for i in range(hider.n_games)]
+                    plot_learning_curve(x, hider_rewards, hider_eps_history, hider_filename, hider.agent_name, 'Hider')
 
 
             game.reset()
