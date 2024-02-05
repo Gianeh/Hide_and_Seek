@@ -46,7 +46,7 @@ def main():
         print("No map chosen. using empty map!")
         map_name = 'empty.txt'
     elif args.map in "empty full movable":
-        map_name = args.map
+        map_name = args.map + '.txt'
     else:
         print("Invalid map name. using empty map!")
         map_name = 'empty.txt'
