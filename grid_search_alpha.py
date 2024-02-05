@@ -1,16 +1,18 @@
 import pygame as pg
+import numpy as np
 from game import Game
-from agent import Agent_alpha_0, Agent_alpha_1, Agent_alpha_2, Agent_hivemind_0, Agent_alpha_3
+from agent import Agent_alpha, Agent_hivemind, Perfect_seeker_0
 from models import QTrainer, QTrainer_beta_1
 import sys
-import os
 import argparse
+import os
+from util import plot_learning_curve, write_config
 
 WHITE = (255, 255, 255)
 BLACK = (0, 0, 0)
 
-MAX_TIME = 1500
-WINTIME = 3
+MAX_TIME = 1000
+WINTIME = 4
 
 
 def main():
@@ -19,22 +21,19 @@ def main():
     parser.add_argument('--hide', action='store_true', help='train the hider')
     parser.add_argument('--seek', action='store_true', help='train the seeker')
     args = parser.parse_args()
-
     hide = args.hide
     seek = args.seek
+    map_name = "full.txt"
+    random_spawn = True
 
     # Instantiate Game and Agents
-    game = Game(30, 30, 20)
-    agents = [Agent_alpha_0, Agent_alpha_1, Agent_alpha_3, Agent_hivemind_0, Agent_alpha_2]
+    game = Game(26, 26, 40, map_name, random_spawn)
+    agents = [Agent_alpha(alpha=0), Agent_alpha(alpha=1), Agent_alpha(alpha=2), Agent_alpha(alpha=3), Agent_hivemind]
     trainers = [QTrainer, QTrainer_beta_1]
     LRs = [0.1, 0.01, 0.001]
     batch_sizes = [1000, 5000, 10000]
     max_memories = [5000, 10000, 50000]
-    MAX_GENERATION = 350
-
-    #alpha_0 -> Done, alpha_1 -> Done, alpha_2 -> Done (need to be fixed -> stopping training at generation 50), hivemind_0 -> Done
-    #for the moment Qtrainer_beta_1 use only default value for update_steps in his init method -> in future grid search update we'll need to pass this parameter to the selected agent
-
+    MAX_GENERATION = 500
 
 
     for a in range(len(agents)):
