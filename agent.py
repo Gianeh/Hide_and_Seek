@@ -783,7 +783,7 @@ class Agent_beta:
         if self.brain.load():
             print("Model loaded")
 
-        print(f"AGENT BETA " + str(self.beta) + ": training {self.name} with {self.device} device")
+        print(f"AGENT BETA " + str(self.beta) + f": training {self.name} with {self.device} device")
 
     # Get the state of the game for the agent - Using different encodings/data for different beta generations
     def get_state(self, game, player):

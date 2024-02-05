@@ -110,19 +110,19 @@ class Player(Cell):
         if direction == 'u':
             self.y -= self.size
             self.direction = 'u'
-            if self.movable_wall is not None: self.movable_wall.move('u', self.map, self.cols)      # Move attached movable wall
+            if self.movable_wall is not None: self.movable_wall.move('u', self.map)      # Move attached movable wall
         elif direction == 'd':
             self.y += self.size
             self.direction = 'd'
-            if self.movable_wall is not None: self.movable_wall.move('d', self.map, self.cols)
+            if self.movable_wall is not None: self.movable_wall.move('d', self.map)
         elif direction == 'l':
             self.x -= self.size
             self.direction = 'l'
-            if self.movable_wall is not None: self.movable_wall.move('l', self.map, self.cols)
+            if self.movable_wall is not None: self.movable_wall.move('l', self.map)
         elif direction == 'r':
             self.x += self.size
             self.direction = 'r'
-            if self.movable_wall is not None: self.movable_wall.move('r', self.map, self.cols)
+            if self.movable_wall is not None: self.movable_wall.move('r', self.map)
 
         # Compute new matrix position
         i = self.y // self.size

@@ -55,8 +55,8 @@ def main():
     game = Game(26, 26, 40, map_name, random_spawn)
 
     # Init Agents
-    hider = Agent_alpha_8('hider', lr=0.0005, batch_size=5000,max_memory=1000000, eps_dec=2e-4, eps_min=0.15)
-    seeker = Agent_alpha_8('seeker', lr=0.0005, batch_size=5000,max_memory=1000000, eps_dec=2e-4, eps_min=0.15) if not perfect_seeker else Perfect_seeker_0('seeker')
+    hider = Agent_beta(3, 'hider', lr=0.0005, batch_size=5000,max_memory=1000000, eps_dec=2e-4, eps_min=0.15)
+    seeker = Agent_beta(3, 'seeker', lr=0.0005, batch_size=5000,max_memory=1000000, eps_dec=2e-4, eps_min=0.15) if not perfect_seeker else Perfect_seeker_0('seeker')
     
     hider_trainer = ""
     if hider.Qtrainer == QTrainer:
@@ -72,7 +72,7 @@ def main():
             seeker_trainer = "Qtrainer"
         elif seeker.Qtrainer == QTrainer_beta_1:
             seeker_trainer = "QTrainer_beta_1"
-        seeker_reward_criterion = 'explore'
+        seeker_reward_criterion = 'smart_evasion'
         write_config(seeker.agent_name, seeker.name, map_name, seeker_trainer, seeker.lr, seeker.batch_size, seeker.max_memory, seeker.epsilon, seeker.eps_dec, seeker.eps_min, seeker.brain.layer_list, seeker_reward_criterion)
 
     seeker_rewards, seeker_eps_history = [], []
@@ -225,8 +225,8 @@ def main():
                 f.write(str(game.players[1].reward) + ";")
 
 
-            if hide: hider.train()
-            if seek: seeker.train()
+            if hide: hider.train_long_memory()
+            if seek: seeker.train_long_memory()
 
 
             hider.n_games += 1

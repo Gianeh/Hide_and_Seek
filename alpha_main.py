@@ -13,7 +13,7 @@ WHITE = (255, 255, 255)
 BLACK = (0, 0, 0)
 
 MAX_TIME = 1000
-WINTIME = 3
+WINTIME = 4
 
 
 def main():
