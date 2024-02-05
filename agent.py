@@ -79,7 +79,7 @@ class Agent_alpha:
                 gameover = np.array(gameover == 'True')
                 self.memory.append((state, action, reward, next_state, gameover))
 
-    # Load the replay memory SELECTIVELY from the file (when  the function is called the file already exists)
+    # Load the replay memory SELECTIVELY from the file (when the function is called the file already exists)
     def load_replay_memory(self, criterion="reward"):
         with open("./alpha_"+str(self.alpha)+"/memory/" + self.name +".txt", "r") as f:
             # Define different sorting criteria for existing memory - note: in memory "reward" is the 3rd element of the lines
@@ -522,26 +522,32 @@ class Agent_hivemind:
 
         # Neural network and trainer instantiation
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        # brain designed for a 26x26 map
+
+        # Brain designed for a 26x26 map
         self.brain = ConvQNet([[1, 3, 3, 1, 1], [3, 1, 9, 1, 0], [1, 1, 7, 1, 0], [1, 1, 5, 1, 0]], [64, 128, 128, 6], self.agent_name, self.name).to(self.device)
         # Convolutional layers definition is not flexible and needs a coherent input (i.e. Map size dependent)
+
         self.trainer = self.Qtrainer(self.brain, self.lr, self.gamma, convolutional=True)
 
+        # Load the model if it exists
         if self.brain.load():
             print("Model loaded")
 
         print(f"AGENT HIVEMIND: training {self.name} with {self.device} device")
-        
+
+    # Load the memory from the file if it exists   
     def init_memory(self):
-        # check if memory file exists
-        if not os.path.exists("./hivemind_0/memory/" + self.name +".txt"):
-            if os.path.exists("./hivemind_0/memory"):
+        # Check if memory file exists
+        if not os.path.exists("./hivemind/memory/" + self.name +".txt"):
+            # If directory already exists, return
+            if os.path.exists("./hivemind/memory"):
                 return
+            # Otherwise create the directory
             else:
-                os.makedirs("./hivemind_0/memory")
+                os.makedirs("./hivemind/memory")
                 return
-        # recall last lines of memory up to MAX_MEMORY
-        with open("./hivemind_0/memory/" + self.name +".txt", "r") as f:
+        # Recall last MAX_MEMORY lines from the memory file
+        with open("./hivemind/memory/" + self.name +".txt", "r") as f:
             lines = f.readlines()
             if len(lines) > self.max_memory:
                 lines = lines[-self.max_memory:]
@@ -554,23 +560,28 @@ class Agent_hivemind:
                 gameover = np.array(gameover == 'True')
                 self.memory.append((state, action, reward, next_state, gameover))
 
+    # Load the replay memory SELECTIVELY from the file (when the function is called the file already exists)
     def load_replay_memory(self, criterion="reward"):
-        with open("./hivemind_0/memory/" + self.name +".txt", "r") as f:
+        with open("./alpha_"+str(self.alpha)+"/memory/" + self.name +".txt", "r") as f:
+            # Define different sorting criteria for existing memory - note: in memory "reward" is the 3rd element of the lines
             if criterion == "abs_reward":
-                crit = lambda x: abs(float(x.split(";")[2]))
+                crit = lambda x: abs(float(x.split(";")[2]))    # highest reward's absolute value
                 reverse = True
             elif criterion == "reward":
-                crit = lambda x: float(x.split(";")[2])
+                crit = lambda x: float(x.split(";")[2])         # highest rewards
                 reverse = True
             elif criterion == "neg_reward":
-                crit = lambda x: float(x.split(";")[2])
+                crit = lambda x: float(x.split(";")[2])         # lowest rewards
                 reverse = False
             elif criterion == "lowest_abs_reward":
-                crit = lambda x: abs(float(x.split(";")[2]))
+                crit = lambda x: abs(float(x.split(";")[2]))    # lowest reward's absolute value
                 reverse = False
+
+            # Note: the lines are picked from the bottom of the file -> reverse = True picks the highest values
 
             lines = sorted(f.readlines(), key=crit, reverse=reverse)
 
+        # Load up to batch_size lines - Use ast to easily parse the matrix representation of the states
         if len(lines) > self.batch_size:
             lines = lines[:self.batch_size]
         for line in lines:
@@ -582,11 +593,13 @@ class Agent_hivemind:
             gameover = np.array(gameover == 'True')
             self.replay_memory.append((state, action, reward, next_state, gameover))
 
-    # hivemind agent is designed to acquire the matrix of the whole map
+    # Get the state of the game for the agent
     def get_state(self, game, player):
-        start = time.time()
+
+        # Encoding of all the object types - None is either outside the map or out of the player's view (hidden by an object) - Player.mask_view()
         objects = {'wall': '5', 'floor': '1', 'hider': '100', 'movable_wall': '10','seeker': '-100', None: '0'}
-        # ["wall", "floor", "hider", "movable_wall", None]
+
+        # Encoding of the whole map
         state = []
         for row in range(len(player.map)):
             state.append([])
@@ -595,56 +608,64 @@ class Agent_hivemind:
 
         return state
 
+    # Pick the next action to take - Tradeoff exploration / exploitation
     def get_action(self, state):
-        start = time.time()
-        # tradeoff exploration / exploitation
-        self.epsilon = self.randomness - self.n_games
+
         # Final action is a one-hot encoded vector
         final_action = [0,0,0,0,0,0]
+
+        # Move randomly
         if random.randint(0, 200) < self.epsilon:   # 200 is arbitrary
             action = random.randint(0, 5)
             final_action[action] = 1
+
+        # Move according to the policy network
         else:
             state = np.array(state)
             current_state = torch.tensor(state, dtype=torch.float).to(self.device)
             prediction = self.brain(current_state)
             action = torch.argmax(prediction).item()
             final_action[action] = 1
-        
-        end = time.time()
-        #print("get_action: ", end - start)
 
         return final_action
 
+    # Store the experience in the agent's memory and in the memory file
     def remember(self, state, action, reward, next_state, gameover):
         self.memory.append((state, action, reward, next_state, gameover))
-        # append to a certain file
         
-        with open("./hivemind_0/memory/" + self.name +".txt", "a") as f:
+        with open("./hivemind/memory/" + self.name +".txt", "a") as f:
             f.write(str(state) + ";")
             f.write(str(action) + ";")
             f.write(str(reward) + ";")
             f.write(str(next_state) + ";")
             f.write(str(gameover) + "\n")
-        
+    
+    # Online training - Short term memory
     def train_short_memory(self, state, action, reward, next_state, gameover):
-        start = time.time()
+        # Cast to numpy arrays for the torch.tensor conversion
         state = np.array(state)
         next_state = np.array(next_state)
+        action = np.array(action)
         self.trainer.train_step(state, action, reward, next_state, gameover)
-        end = time.time()
-        #print("train_short_memory: ", end - start)
 
+    # Batch training - Long term memory
     def train_long_memory(self):
         start = time.time()
+        # Decrease exploration probability
+        if self.epsilon > 0 : self.epsilon -= 1
+
+        # Sample a random batch from the memory
         if len(self.memory) > self.batch_size:
             batch_sample = random.sample(self.memory, self.batch_size)
+
+        # If the memory is not big enough, train on the whole memory
         else:
             batch_sample = self.memory
 
+        # Separate the batch into its components
         states, actions, rewards, next_states, gameovers = zip(*batch_sample)
 
-        # convert to numpy arrays
+        # Convert to numpy arrays for the torch.tensor conversion
         states = np.array(states)
         actions = np.array(actions)
         rewards = np.array(rewards)
@@ -653,19 +674,25 @@ class Agent_hivemind:
 
         self.trainer.train_step(states, actions, rewards, next_states, gameovers)
 
+        # Save the model
         self.brain.save()
+
+        # Log time took for training
         end = time.time()
         if self.name == "seeker": print(f"\033[94mtraning seeker's long memory took: {end - start} seconds\033[0m")
         else: print(f"\033[92mtraning hider's long memory took: {end - start} seconds\033[0m")
 
+    # Replay training - Selective memory
     def train_replay(self, criterion="reward"):
         start = time.time()
 
+        # Load the replay memory according to the criterion
         self.load_replay_memory(criterion)
 
+        # Separate the replay memory into its components
         states, actions, rewards, next_states, gameovers = zip(*self.replay_memory)
 
-        # convert to numpy arrays
+        # Convert to numpy arrays for the torch.tensor conversion
         states = np.array(states)
         actions = np.array(actions)
         rewards = np.array(rewards)
@@ -674,16 +701,20 @@ class Agent_hivemind:
 
         self.trainer.train_step(states, actions, rewards, next_states, gameovers)
 
+        # Log time took for training
         end = time.time()
         print("+"*50)
         print(f"\033[96mtrain_replay with {criterion} criterion in: {end - start} seconds\033[0m")
         print("+"*50)
+
+        # Reset the replay memory for next training
         self.replay_memory = []
 
+    # Clean the memory file from perfectly identical consecutive lines if their number is over a certain threshold
     def clean_memory(self, duplicates=100):
         start = time.time()
-        # clean identical lines if number is over
-        file_path = "./hivemind_0/memory/" + self.name + ".txt"
+
+        file_path = "./hivemind/memory/" + self.name + ".txt"
         with open(file_path, "r") as f:
             lines = f.readlines()
         count = 0
@@ -693,6 +724,7 @@ class Agent_hivemind:
             if lines[i] == lines[i + 1]:
                 count += 1
                 if count == duplicates:
+                                    # First duplicate     # Next value
                     lines = lines[:i - duplicates + 2] + lines[i + 1:]
                     count = 0
                     erased += duplicates
@@ -700,122 +732,344 @@ class Agent_hivemind:
                 count = 0
             i += 1
 
+        # Update the memory file
         with open(file_path, "w") as f:
             f.writelines(lines)
 
+
+        # Log time took for cleaning
         end = time.time()
         print("#" * 50)
         print(f"\033[92mclean_memory for {self.name}, erased {erased} lines in: ", end - start, " seconds\033[0m")
         print("#" * 50)
 
-class Agent_alpha_4:
-    def __init__(self, name='model', Qtrainer=QTrainer_beta_1, lr=0.0005, batch_size=1000, max_memory=100000, eps_dec= 5e-4, eps_min = 0.01):
-        self.agent_name = "alpha_4"
+# Agent Beta doesn't employ replay or file memory anymore, the exploration is now fixed to a minimum reached after a certain number of games:
+    # Agent Beta 0 is the first prototype that doesn't rely on the file memory and uses player's view and neighbourhood
+    # Agent Beta 1, with the same encoding of Beta 0, uses more information about player's positions, distances and directions
+    # Agent Beta 2 mimicks Beta 1 but one-hot encodes the direction and doesn't rely on the distance, resulting in the biggest input size of all the Beta agents, aided by the bigger network
+    # Agent Beta 3 doesn't use the view of the players and only relies on the neighbourhood and positions, with the smallest input size of the series, it keeps the deep architecture of Beta 2 (with fewer neurons per layer)
+    # Agent Beta 4 is the only one to employ the lidar vision system paired with positions and available actions, no longer relying on the player's view and neighbourhood
+class Agent_beta:
+    def __init__(self, beta=0, name='model', Qtrainer=QTrainer_beta_1, lr=0.0005, batch_size=1000, max_memory=100000, eps_dec= 5e-4, eps_min = 0.01):
+        # Beta generation number (0,1,2,3,4)
+        self.beta = beta
+        # Agent name corresponds to the beta generation and is used to save and load the model, configs and memory
+        self.agent_name = "beta_"+str(self.beta)
+        # Seeker or Hider
         self.name = name
+        # Q_trainer class is instantiated without parameters to include it in the config file
         self.Qtrainer = Qtrainer
+
+        # Agent hyperparameters
         self.lr = lr
         self.batch_size = batch_size
         self.max_memory = max_memory
-        self.n_games = 0
-        self.epsilon = 1.0
-        self.eps_dec = eps_dec
-        self.eps_min = eps_min
-        self.gamma = 0.9  # discount rate
-        self.memory = deque(maxlen=self.max_memory)  # automatic popleft()
+        self.n_games = 0        # number of games played
+        self.epsilon = 1.0      # randomness
+        self.eps_dec = eps_dec  # epsilon decrement
+        self.eps_min = eps_min  # minimum epsilon (to keep some degree of exploration)
+        self.gamma = 0.9        # future expected reward discount rate
+
+        # Agent long term memory
+        self.memory = deque(maxlen=self.max_memory)         # agent memory, queue with maxlen to automatically pop left 
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        self.brain = QNet([75, 256, 256, 6], self.agent_name, self.name).to(self.device)
+
+        # beta_generation picks the respective network architecture for the agent
+        beta_generation = {0: [75, 256, 256, 6], 1: [81, 256, 256, 6], 2: [83, 256, 128, 128, 256, 6], 3: [28, 256, 128, 64, 32, 6], 4: [64, 512, 128, 6]}
+        self.brain = QNet(beta_generation[self.beta], self.agent_name, self.name).to(self.device)
         self.trainer = self.Qtrainer(self.brain, self.lr, self.gamma)
 
+        # Load the model if it exists
         if self.brain.load():
             print("Model loaded")
 
-        print(f"AGENT ALPHA 4: training {self.name} with {self.device} device")
+        print(f"AGENT BETA " + str(self.beta) + ": training {self.name} with {self.device} device")
 
+    # Get the state of the game for the agent - Using different encodings/data for different beta generations
     def get_state(self, game, player):
         x = player.x
         y = player.y
+
         i = y // player.size
         j = x // player.size
 
-        view = player.view
-        objects = {'wall': '10000', 'floor': '01000', 'hider': '00100', 'movable_wall': '00010', 'seeker': '00001', None: '00000'}
-        # ["wall", "floor", "hider", "movable_wall", None]
-        view_vector = []
-        for l in view:
-            for c in l:
-                if c is None:
-                    for n in objects[c]:
-                        view_vector.append(int(n))
-                else:
-                    for n in objects[c.obj_type]:
-                        view_vector.append(int(n))
+        other_player = game.players[0] if player.obj_type == 'seeker' else game.players[1]
+        other_player_i = other_player.y // other_player.size
+        other_player_j = other_player.x // other_player.size
 
-        neighbourhood = []  # left back right
+        # Beta 0
+        if self.beta == 0:
 
-        if player.direction == 'u':
-            left = player.map[i][j - 1].obj_type if j - 1 >= 0 else None
-            back = player.map[i + 1][j].obj_type if i + 1 < game.rows else None
-            right = player.map[i][j + 1].obj_type if j + 1 < game.cols else None
+            # One-hot encoding of all the object types - None is either outside the map or out of the player's view (hidden by an object) - Player.mask_view()
+            objects = {'wall': '10000', 'floor': '01000', 'hider': '00100', 'movable_wall': '00010', 'seeker': '00001', None: '00000'}
 
-        elif player.direction == 'd':
-            left = player.map[i][j + 1].obj_type if j + 1 < game.cols else None
-            back = player.map[i - 1][j].obj_type if i - 1 >= 0 else None
-            right = player.map[i][j - 1].obj_type if j - 1 >= 0 else None
+            # What the player sees according to policy
+            view = player.view
 
-        elif player.direction == 'l':
-            left = player.map[i + 1][j].obj_type if i + 1 < game.rows else None
-            back = player.map[i][j + 1].obj_type if j + 1 < game.cols else None
-            right = player.map[i - 1][j].obj_type if i - 1 >= 0 else None
+            # Encode the view
+            view_vector = []
+            for l in view:
+                for c in l:
+                    if c is None:
+                        for n in objects[c]:
+                            view_vector.append(int(n))
+                    else:
+                        for n in objects[c.obj_type]:
+                            view_vector.append(int(n))
 
-        elif player.direction == 'r':
-            left = player.map[i - 1][j].obj_type if i - 1 >= 0 else None
-            back = player.map[i][j - 1].obj_type if j - 1 >= 0 else None
-            right = player.map[i + 1][j].obj_type if i + 1 < game.rows else None
+            # Depending on player's direction the neighbourhood is composed of the 3 cells around the player (except for the faced one)
+            neighbourhood = []  # order - left, back, right
 
-        for n in objects[left]:
-            neighbourhood.append(int(n))
-        for n in objects[back]:
-            neighbourhood.append(int(n))
-        for n in objects[right]:
-            neighbourhood.append(int(n))
+            if player.direction == 'u':         # up
+                left = player.map[i][j - 1].obj_type if j - 1 >= 0 else None
+                back = player.map[i + 1][j].obj_type if i + 1 < game.rows else None
+                right = player.map[i][j + 1].obj_type if j + 1 < game.cols else None
 
-        state = view_vector + neighbourhood
+            elif player.direction == 'd':       # down
+                left = player.map[i][j + 1].obj_type if j + 1 < game.cols else None
+                back = player.map[i - 1][j].obj_type if i - 1 >= 0 else None
+                right = player.map[i][j - 1].obj_type if j - 1 >= 0 else None
+
+            elif player.direction == 'l':       # left
+                left = player.map[i + 1][j].obj_type if i + 1 < game.rows else None
+                back = player.map[i][j + 1].obj_type if j + 1 < game.cols else None
+                right = player.map[i - 1][j].obj_type if i - 1 >= 0 else None
+
+            elif player.direction == 'r':       # right
+                left = player.map[i - 1][j].obj_type if i - 1 >= 0 else None
+                back = player.map[i][j - 1].obj_type if j - 1 >= 0 else None
+                right = player.map[i + 1][j].obj_type if i + 1 < game.rows else None
+
+            # Encode the neighbourhood
+            for n in objects[left]:
+                neighbourhood.append(int(n))
+            for n in objects[back]:
+                neighbourhood.append(int(n))
+            for n in objects[right]:
+                neighbourhood.append(int(n))
+
+            state = view_vector + neighbourhood
+        # Beta 1   
+        elif self.beta == 1:
+            
+            # Encoding of all the object types - None is either outside the map or out of the player's view (hidden by an object) - Player.mask_view()
+            objects = {'wall': '10000', 'floor': '01000', 'hider': '00100', 'movable_wall': '00010', 'seeker': '00001', None: '00000'}
+
+            # Euclidean distance from the other player
+            distance = np.sqrt((other_player_i - i)**2 + (other_player_j - j)**2)
+            # Normalize the distance
+            distance = distance / (game.rows * np.sqrt(2))    # Assuming a square map
+
+            # Direction of the player
+            if player.direction == 'u':
+                direction = 0
+            elif player.direction == 'd':
+                direction = 1
+            elif player.direction == 'l':
+                direction = 2
+            elif player.direction == 'r':
+                direction = 3
+
+            # What the player sees according to policy
+            view = player.view
+            # Encode the view
+            view_vector = []
+            for l in view:
+                for c in l:
+                    if c is None:
+                        for n in objects[c]:
+                            view_vector.append(int(n))
+                    else:
+                        for n in objects[c.obj_type]:
+                            view_vector.append(int(n))
+
+            # Depending on player's direction the neighbourhood is composed of the 3 cells around the player (except for the faced one)
+            neighbourhood = []  # order - left back right
+            
+            if player.direction == 'u':     # up
+                left = player.map[i][j - 1].obj_type if j - 1 >= 0 else None
+                back = player.map[i + 1][j].obj_type if i + 1 < game.rows else None
+                right = player.map[i][j + 1].obj_type if j + 1 < game.cols else None
+
+            elif player.direction == 'd':   # down
+                left = player.map[i][j + 1].obj_type if j + 1 < game.cols else None
+                back = player.map[i - 1][j].obj_type if i - 1 >= 0 else None
+                right = player.map[i][j - 1].obj_type if j - 1 >= 0 else None
+
+            elif player.direction == 'l':   # left
+                left = player.map[i + 1][j].obj_type if i + 1 < game.rows else None
+                back = player.map[i][j + 1].obj_type if j + 1 < game.cols else None
+                right = player.map[i - 1][j].obj_type if i - 1 >= 0 else None
+
+            elif player.direction == 'r':   # right
+                left = player.map[i - 1][j].obj_type if i - 1 >= 0 else None
+                back = player.map[i][j - 1].obj_type if j - 1 >= 0 else None
+                right = player.map[i + 1][j].obj_type if i + 1 < game.rows else None
+
+            # Encode the neighbourhood
+            for n in objects[left]:
+                neighbourhood.append(int(n))
+            for n in objects[back]:
+                neighbourhood.append(int(n))
+            for n in objects[right]:
+                neighbourhood.append(int(n))
+
+            state = [i,j] + view_vector + neighbourhood + [distance, direction] + [other_player_i, other_player_j]
+        # Beta 2
+        elif self.beta == 2:
+            # One-hot encoding of the directions
+            directions = {'u' : '0001', 'd' : '0010', 'l' : '0100', 'r' : '1000'}
+            # One-hot encoding of all the object types - None is either outside the map or out of the player's view (hidden by an object) - Player.mask_view()
+            objects = {'wall': '10000', 'floor': '01000', 'hider': '00100', 'movable_wall': '00010', 'seeker': '00001', None: '00000'}
+            
+            # What the player sees according to policy
+            view = player.view
+
+            # Encode the view
+            view_vector = []
+            for l in view:
+                for c in l:
+                    if c is None:
+                        for n in objects[c]:
+                            view_vector.append(int(n))
+                    else:
+                        for n in objects[c.obj_type]:
+                            view_vector.append(int(n))
+
+            # Depending on player's direction the neighbourhood is composed of the 3 cells around the player (except for the faced one)
+            neighbourhood = []  # order - left back right
+            
+            # None is outside of the map
+            if player.direction == 'u':
+                left = player.map[i][j - 1].obj_type if j - 1 >= 0 else None
+                back = player.map[i + 1][j].obj_type if i + 1 < game.rows else None
+                right = player.map[i][j + 1].obj_type if j + 1 < game.cols else None
+
+            elif player.direction == 'd':
+                left = player.map[i][j + 1].obj_type if j + 1 < game.cols else None
+                back = player.map[i - 1][j].obj_type if i - 1 >= 0 else None
+                right = player.map[i][j - 1].obj_type if j - 1 >= 0 else None
+
+            elif player.direction == 'l':
+                left = player.map[i + 1][j].obj_type if i + 1 < game.rows else None
+                back = player.map[i][j + 1].obj_type if j + 1 < game.cols else None
+                right = player.map[i - 1][j].obj_type if i - 1 >= 0 else None
+
+            elif player.direction == 'r':
+                left = player.map[i - 1][j].obj_type if i - 1 >= 0 else None
+                back = player.map[i][j - 1].obj_type if j - 1 >= 0 else None
+                right = player.map[i + 1][j].obj_type if i + 1 < game.rows else None
+
+            # Encode the neighbourhood
+            for n in objects[left]:
+                neighbourhood.append(int(n))
+            for n in objects[back]:
+                neighbourhood.append(int(n))
+            for n in objects[right]:
+                neighbourhood.append(int(n))
+
+            direction = []
+
+            # Encode direction
+            for n in directions[player.direction]:
+                direction.append(int(n))
+
+
+            state = [i,j] + view_vector + neighbourhood + direction + [other_player_i, other_player_j]
+        # Beta 3
+        elif self.beta == 3:
+            
+            # One-hot encoding of all the object types - map_edge is outside the map - No confilts with view masking as it's not used
+            objects = {'wall': '100000', 'floor': '010000', 'hider': '001000', 'movable_wall': '000100', 'seeker': '000010', 'map_edge': '000001'}
+            
+            # The neighbourhood is composed of the 4 cells around the player
+            neighbourhood = []  # order - left back right up
+
+            left = player.map[i][j - 1].obj_type if j - 1 >= 0 else 'map_edge'
+            back = player.map[i + 1][j].obj_type if i + 1 < game.rows else 'map_edge'
+            right = player.map[i][j + 1].obj_type if j + 1 < game.cols else 'map_edge'
+            up = player.map[i-1][j].obj_type if i >= 1 else 'map_edge'
+
+            # Encode the neighbourhood
+            for n in objects[left]:
+                neighbourhood.append(int(n))
+            for n in objects[back]:
+                neighbourhood.append(int(n))
+            for n in objects[right]:
+                neighbourhood.append(int(n))
+            for n in objects[up]:
+                neighbourhood.append(int(n))
+
+            state = [i,j] + neighbourhood + [other_player_i, other_player_j]
+        # Beta 4
+        elif self.beta == 4:
+            # One-hot encoding of all the object types - map_edge is outside the map - No confilts with view masking as it's not used
+            objects = {'wall': '100000', 'floor': '010000', 'hider': '001000', 'movable_wall': '000100', 'seeker': '000010', 'map_edge': '000001'}
+
+            # Available positions for the next taken action - {'sx': False, 'dx': False, 'u':False, 'd':False}
+            av = game.check_available_positions(player)
+            av_pos = [int(av['u']), int(av['dx']), int(av['d']), int(av['sx'])]
+
+            # What the 8 lidar sensors detect
+            lidar_data = []
+
+            # Encode the lidar data
+            for elem in range(len(player.lidar)):
+                for n in objects[player.lidar[elem][0]]:
+                    lidar_data.append(int(n))
+                lidar_data.append(player.lidar[elem][1])
+            #lidar_data = [0,0,0,0,0,1,7.56 ; 1,0,0,0,0,0,89.3 ; ...] (1-hot encoded obj_type + distance)
+
+            state = [i,j] + av_pos + lidar_data + [other_player_i, other_player_j]
+            
         return state
-
+    
+    # Pick the next action to take - Tradeoff exploration / exploitation
     def get_action(self, state):
-        # tradeoff exploration / exploitation
+        # Final action is a one-hot encoded vector
         final_action = [0, 0, 0, 0, 0, 0]
+
+        # Move randomly
         if np.random.random() > self.epsilon:
             state = np.array(state)
             current_state = torch.tensor(state, dtype=torch.float).to(self.device)
             prediction = self.brain(current_state)
             action = torch.argmax(prediction).item()
             final_action[action] = 1
+        
+        # Move according to the policy network
         else:
             action = random.randint(0, 5)
             final_action[action] = 1
 
         return final_action
 
+    # Store the experience in the agent's memory
     def remember(self, state, action, reward, next_state, gameover):
         self.memory.append((state, action, reward, next_state, gameover))
 
+    # Online training - Short term memory
     def train_short_memory(self, state, action, reward, next_state, gameover):
-        start = time.time()
+        # Cast to numpy arrays for the torch.tensor conversion
         state = np.array(state)
         next_state = np.array(next_state)
+        action = np.array(action)
         self.trainer.train_step(state, action, reward, next_state, gameover)
-        end = time.time()
 
+    # Batch training - Long term memory
     def train_long_memory(self):
+        start = time.time()
+        # If memory is not big enough, skip training
         if len(self.memory) < self.batch_size:
             return
+        # Sample a random batch from the memory
         else:
             batch_sample = random.sample(self.memory, self.batch_size)
 
+        # Separate the batch into its components
         states, actions, rewards, next_states, gameovers = zip(*batch_sample)
 
-        # convert to numpy arrays
+        # Cast to numpy arrays for the torch.tensor conversion
         states = np.array(states)
         actions = np.array(actions)
         rewards = np.array(rewards)
@@ -824,553 +1078,17 @@ class Agent_alpha_4:
 
         self.trainer.train_step(states, actions, rewards, next_states, gameovers)
 
+        # Save the model
         self.brain.save()
 
+        # Decrease epsilon
         self.decrement_epsilon()
 
-    def decrement_epsilon(self):
-        self.epsilon = self.epsilon - self.eps_dec if self.epsilon > self.eps_min else self.eps_min
-
-class Agent_alpha_5:
-    def __init__(self, name='model', Qtrainer=QTrainer_beta_1, lr=0.001, batch_size=1000, max_memory=100000, epsilon = 1.0, eps_dec= 5e-4, eps_min = 0.05):
-        self.agent_name = "alpha_5"
-        self.name = name
-        self.Qtrainer = Qtrainer
-        self.lr = lr
-        self.batch_size = batch_size
-        self.max_memory = max_memory
-        self.n_games = 0
-        self.epsilon = epsilon
-        self.eps_dec = eps_dec
-        self.eps_min = eps_min
-        self.gamma = 0.9  # discount rate
-        self.memory = deque(maxlen=self.max_memory)  # automatic popleft()
-        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        self.brain = QNet([81, 256, 256, 6], self.agent_name, self.name).to(self.device)
-        self.trainer = self.Qtrainer(self.brain, self.lr, self.gamma)
-
-        if self.brain.load():
-            print("Model loaded")
-
-        print(f"AGENT ALPHA 5: training {self.name} with {self.device} device")
-
-    def get_state(self, game, player):
-        start = time.time()
-        x = player.x
-        y = player.y
-        i = y // player.size
-        j = x // player.size
-
-        other_player = game.players[0] if player.obj_type == 'seeker' else game.players[1]
-        other_player_i = other_player.y // other_player.size
-        other_player_j = other_player.x // other_player.size
-        distance = np.sqrt((other_player_i - i)**2 + (other_player_j - j)**2)
-        direction = player.direction
-
-        if direction == 'u':
-            direction = 0
-        elif direction == 'd':
-            direction = 1
-        elif direction == 'l':
-            direction = 2
-        elif direction == 'r':
-            direction = 3
-
-        view = player.view
-        objects = {'wall': '10000', 'floor': '01000', 'hider': '00100', 'movable_wall': '00010', 'seeker': '00001', None: '00000'}
-        # ["wall", "floor", "hider", "movable_wall", None]
-        view_vector = []
-        for l in view:
-            for c in l:
-                if c is None:
-                    for n in objects[c]:
-                        view_vector.append(int(n))
-                else:
-                    for n in objects[c.obj_type]:
-                        view_vector.append(int(n))
-
-        neighbourhood = []  # left back right
-
-        if player.direction == 'u':
-            left = player.map[i][j - 1].obj_type if j - 1 >= 0 else None
-            back = player.map[i + 1][j].obj_type if i + 1 < game.rows else None
-            right = player.map[i][j + 1].obj_type if j + 1 < game.cols else None
-
-        elif player.direction == 'd':
-            left = player.map[i][j + 1].obj_type if j + 1 < game.cols else None
-            back = player.map[i - 1][j].obj_type if i - 1 >= 0 else None
-            right = player.map[i][j - 1].obj_type if j - 1 >= 0 else None
-
-        elif player.direction == 'l':
-            left = player.map[i + 1][j].obj_type if i + 1 < game.rows else None
-            back = player.map[i][j + 1].obj_type if j + 1 < game.cols else None
-            right = player.map[i - 1][j].obj_type if i - 1 >= 0 else None
-
-        elif player.direction == 'r':
-            left = player.map[i - 1][j].obj_type if i - 1 >= 0 else None
-            back = player.map[i][j - 1].obj_type if j - 1 >= 0 else None
-            right = player.map[i + 1][j].obj_type if i + 1 < game.rows else None
-
-        for n in objects[left]:
-            neighbourhood.append(int(n))
-        for n in objects[back]:
-            neighbourhood.append(int(n))
-        for n in objects[right]:
-            neighbourhood.append(int(n))
-
-        distance = distance / (game.rows + game.cols)
-
-        state = [i,j] + view_vector + neighbourhood + [distance, direction] + [other_player_i, other_player_j]
-        return state
-
-    def get_action(self, state):
-        # tradeoff exploration / exploitation
-        final_action = [0, 0, 0, 0, 0, 0]
-        if np.random.random() > self.epsilon:
-            state = np.array(state)
-            current_state = torch.tensor(state, dtype=torch.float).to(self.device)
-            prediction = self.brain(current_state)
-            action = torch.argmax(prediction).item()
-            final_action[action] = 1
-        else:
-            action = random.randint(0, 5)
-            final_action[action] = 1
-
-        return final_action
-    
-    def perform_action(self, state):
-        # only exploitation
-        final_action = [0, 0, 0, 0, 0, 0]
-        
-        state = np.array(state)
-        current_state = torch.tensor(state, dtype=torch.float).to(self.device)
-        prediction = self.brain(current_state)
-        action = torch.argmax(prediction).item()
-        final_action[action] = 1
-
-        return final_action
-
-    def remember(self, state, action, reward, next_state, gameover):
-        self.memory.append((state, action, reward, next_state, gameover))
-
-    def train_short_memory(self, state, action, reward, next_state, gameover):
-        start = time.time()
-        state = np.array(state)
-        next_state = np.array(next_state)
-        self.trainer.train_step(state, action, reward, next_state, gameover)
+        # Log time took for training
         end = time.time()
+        print(f"\033[92mtraning long memory took: {end - start} seconds\033[0m")
 
-    def train_long_memory(self):
-        if len(self.memory) < self.batch_size:
-            return
-        else:
-            batch_sample = random.sample(self.memory, self.batch_size)
-
-        states, actions, rewards, next_states, gameovers = zip(*batch_sample)
-
-        # convert to numpy arrays
-        states = np.array(states)
-        actions = np.array(actions)
-        rewards = np.array(rewards)
-        next_states = np.array(next_states)
-        gameovers = np.array(gameovers)
-
-        self.trainer.train_step(states, actions, rewards, next_states, gameovers)
-
-        self.brain.save()
-
-        self.decrement_epsilon()
-
-    def decrement_epsilon(self):
-        self.epsilon = self.epsilon - self.eps_dec if self.epsilon > self.eps_min else self.eps_min
-
-class Agent_alpha_6:
-    def __init__(self, name='model', Qtrainer=QTrainer_beta_1, lr=0.001, batch_size=1000, max_memory=100000, epsilon = 1.0, eps_dec= 5e-4, eps_min = 0.05):
-        self.agent_name = "alpha_6"
-        self.name = name
-        self.Qtrainer = Qtrainer
-        self.lr = lr
-        self.batch_size = batch_size
-        self.max_memory = max_memory
-        self.n_games = 0
-        self.epsilon = epsilon
-        self.eps_dec = eps_dec
-        self.eps_min = eps_min
-        self.gamma = 0.9  # discount rate
-        self.memory = deque(maxlen=self.max_memory)  # automatic popleft()
-        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        self.brain = QNet([83, 256, 128, 128, 256, 6], self.agent_name, self.name).to(self.device)
-        self.trainer = self.Qtrainer(self.brain, self.lr, self.gamma)
-
-        if self.brain.load():
-            print("Model loaded")
-
-        print(f"AGENT ALPHA 6: training {self.name} with {self.device} device")
-
-    def get_state(self, game, player):
-        start = time.time()
-        x = player.x
-        y = player.y
-        i = y // player.size
-        j = x // player.size
-
-        other_player = game.players[0] if player.obj_type == 'seeker' else game.players[1]
-        other_player_i = other_player.y // other_player.size
-        other_player_j = other_player.x // other_player.size
-
-        directions = {'u' : '0001', 'd' : '0010', 'l' : '0100', 'r' : '1000'}
-
-        view = player.view
-        objects = {'wall': '10000', 'floor': '01000', 'hider': '00100', 'movable_wall': '00010', 'seeker': '00001', None: '00000'}
-        # ["wall", "floor", "hider", "movable_wall", None]
-        view_vector = []
-        for l in view:
-            for c in l:
-                if c is None:
-                    for n in objects[c]:
-                        view_vector.append(int(n))
-                else:
-                    for n in objects[c.obj_type]:
-                        view_vector.append(int(n))
-
-        neighbourhood = []  # left back right
-
-        if player.direction == 'u':
-            left = player.map[i][j - 1].obj_type if j - 1 >= 0 else None
-            back = player.map[i + 1][j].obj_type if i + 1 < game.rows else None
-            right = player.map[i][j + 1].obj_type if j + 1 < game.cols else None
-
-        elif player.direction == 'd':
-            left = player.map[i][j + 1].obj_type if j + 1 < game.cols else None
-            back = player.map[i - 1][j].obj_type if i - 1 >= 0 else None
-            right = player.map[i][j - 1].obj_type if j - 1 >= 0 else None
-
-        elif player.direction == 'l':
-            left = player.map[i + 1][j].obj_type if i + 1 < game.rows else None
-            back = player.map[i][j + 1].obj_type if j + 1 < game.cols else None
-            right = player.map[i - 1][j].obj_type if i - 1 >= 0 else None
-
-        elif player.direction == 'r':
-            left = player.map[i - 1][j].obj_type if i - 1 >= 0 else None
-            back = player.map[i][j - 1].obj_type if j - 1 >= 0 else None
-            right = player.map[i + 1][j].obj_type if i + 1 < game.rows else None
-
-        for n in objects[left]:
-            neighbourhood.append(int(n))
-        for n in objects[back]:
-            neighbourhood.append(int(n))
-        for n in objects[right]:
-            neighbourhood.append(int(n))
-
-        direction = []
-
-        for n in directions[player.direction]:
-            direction.append(int(n))
-
-
-        state = [i,j] + view_vector + neighbourhood + direction + [other_player_i, other_player_j]
-
-        return state
-
-    def get_action(self, state):
-        # tradeoff exploration / exploitation
-        final_action = [0, 0, 0, 0, 0, 0]
-        if np.random.random() > self.epsilon:
-            state = np.array(state)
-            current_state = torch.tensor(state, dtype=torch.float).to(self.device)
-            prediction = self.brain(current_state)
-            action = torch.argmax(prediction).item()
-            final_action[action] = 1
-        else:
-            action = random.randint(0, 5)
-            final_action[action] = 1
-
-        return final_action
-    
-    #method to perform only model prediction in game
-    def perform_action(self, state):
-        # only exploitation
-        final_action = [0, 0, 0, 0, 0, 0]
-        
-        state = np.array(state)
-        current_state = torch.tensor(state, dtype=torch.float).to(self.device)
-        prediction = self.brain(current_state)
-        action = torch.argmax(prediction).item()
-        final_action[action] = 1
-
-        return final_action
-
-    def remember(self, state, action, reward, next_state, gameover):
-        self.memory.append((state, action, reward, next_state, gameover))
-
-    def train_short_memory(self, state, action, reward, next_state, gameover):
-        start = time.time()
-        state = np.array(state)
-        next_state = np.array(next_state)
-        self.trainer.train_step(state, action, reward, next_state, gameover)
-        end = time.time()
-
-    def train_long_memory(self):
-        if len(self.memory) < self.batch_size:
-            return
-        else:
-            batch_sample = random.sample(self.memory, self.batch_size)
-
-        states, actions, rewards, next_states, gameovers = zip(*batch_sample)
-
-        # convert to numpy arrays
-        states = np.array(states)
-        actions = np.array(actions)
-        rewards = np.array(rewards)
-        next_states = np.array(next_states)
-        gameovers = np.array(gameovers)
-
-        self.trainer.train_step(states, actions, rewards, next_states, gameovers)
-
-        self.brain.save()
-
-        self.decrement_epsilon()
-
-    def decrement_epsilon(self):
-        self.epsilon = self.epsilon - self.eps_dec if self.epsilon > self.eps_min else self.eps_min
-
-class Agent_alpha_7:
-    def __init__(self, name='model', Qtrainer=QTrainer_beta_1, lr=0.001, batch_size=1000, max_memory=100000, epsilon = 1.0, eps_dec= 5e-4, eps_min = 0.05):
-        self.agent_name = "alpha_7"
-        self.name = name
-        self.Qtrainer = Qtrainer
-        self.lr = lr
-        self.batch_size = batch_size
-        self.max_memory = max_memory
-        self.n_games = 0
-        self.epsilon = epsilon
-        self.eps_dec = eps_dec
-        self.eps_min = eps_min
-        self.gamma = 0.9  # discount rate
-        self.memory = deque(maxlen=self.max_memory)  # automatic popleft()
-        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        self.brain = QNet([28, 256, 128, 64, 32, 6], self.agent_name, self.name).to(self.device)
-        self.trainer = self.Qtrainer(self.brain, self.lr, self.gamma)
-
-        if self.brain.load():
-            print("Model loaded")
-
-        print(f"AGENT ALPHA 7: training {self.name} with {self.device} device")
-
-    def get_state(self, game, player):
-        start = time.time()
-        x = player.x
-        y = player.y
-        i = y // player.size
-        j = x // player.size
-
-        other_player = game.players[0] if player.obj_type == 'seeker' else game.players[1]
-        other_player_i = other_player.y // other_player.size
-        other_player_j = other_player.x // other_player.size
-
-        objects = {'wall': '100000', 'floor': '010000', 'hider': '001000', 'movable_wall': '000100', 'seeker': '000010', 'map_edge': '000001'}
-
-        neighbourhood = []  
-
-        left = player.map[i][j - 1].obj_type if j - 1 >= 0 else 'map_edge'
-        back = player.map[i + 1][j].obj_type if i + 1 < game.rows else 'map_edge'
-        right = player.map[i][j + 1].obj_type if j + 1 < game.cols else 'map_edge'
-        up = player.map[i-1][j].obj_type if i >= 1 else 'map_edge'
-
-        for n in objects[left]:
-            neighbourhood.append(int(n))
-        for n in objects[back]:
-            neighbourhood.append(int(n))
-        for n in objects[right]:
-            neighbourhood.append(int(n))
-        for n in objects[up]:
-            neighbourhood.append(int(n))
-
-        state = [i,j] + neighbourhood + [other_player_i, other_player_j]
-
-        return state
-
-    def get_action(self, state):
-        # tradeoff exploration / exploitation
-        final_action = [0, 0, 0, 0, 0, 0]
-        if np.random.random() > self.epsilon:
-            state = np.array(state)
-            current_state = torch.tensor(state, dtype=torch.float).to(self.device)
-            prediction = self.brain(current_state)
-            action = torch.argmax(prediction).item()
-            final_action[action] = 1
-        else:
-            if self.epsilon < 0.7:
-                action = random.randint(0, 5)     #second exploration phase (eps < 0.7) experiment all controls 
-            else:
-                action = random.randint(0, 3)     #first explorarion phase (eps=[1.0 - 0.7]) is just moving around the map
-            final_action[action] = 1
-
-        return final_action
-    
-    #method to perform only model prediction in game
-    def perform_action(self, state):
-        # tradeoff exploration / exploitation
-        final_action = [0, 0, 0, 0, 0, 0]
-        
-        state = np.array(state)
-        current_state = torch.tensor(state, dtype=torch.float).to(self.device)
-        prediction = self.brain(current_state)
-        action = torch.argmax(prediction).item()
-        final_action[action] = 1
-
-        return final_action
-
-    def remember(self, state, action, reward, next_state, gameover):
-        self.memory.append((state, action, reward, next_state, gameover))
-
-    def train_short_memory(self, state, action, reward, next_state, gameover):
-        start = time.time()
-        state = np.array(state)
-        next_state = np.array(next_state)
-        self.trainer.train_step(state, action, reward, next_state, gameover)
-        end = time.time()
-
-    def train_long_memory(self):
-        if len(self.memory) < self.batch_size:
-            return
-        else:
-            batch_sample = random.sample(self.memory, self.batch_size)
-
-        states, actions, rewards, next_states, gameovers = zip(*batch_sample)
-        #print('pre : ', type(states), len(states), len(states[0]),'\n')
-
-        # convert to numpy arrays
-        states = np.array(states)
-        actions = np.array(actions)
-        rewards = np.array(rewards)
-        next_states = np.array(next_states)
-        gameovers = np.array(gameovers)
-
-        self.trainer.train_step(states, actions, rewards, next_states, gameovers)
-
-        self.brain.save()
-
-        self.decrement_epsilon()
-
-    def decrement_epsilon(self):
-        self.epsilon = self.epsilon - self.eps_dec if self.epsilon > self.eps_min else self.eps_min
-
-class Agent_alpha_8:
-    def __init__(self, name='model', Qtrainer=QTrainer_beta_1, lr=0.001, batch_size=1000, max_memory=100000, epsilon = 1.0, eps_dec= 5e-4, eps_min = 0.05):
-        self.agent_name = "alpha_8"
-        self.name = name
-        self.Qtrainer = Qtrainer
-        self.lr = lr
-        self.batch_size = batch_size
-        self.max_memory = max_memory
-        self.n_games = 0
-        self.epsilon = epsilon
-        self.eps_dec = eps_dec
-        self.eps_min = eps_min
-        self.gamma = 0.9  # discount rate
-        self.memory = deque(maxlen=self.max_memory)  # automatic popleft()
-        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        self.brain = QNet([64, 512, 128, 6], self.agent_name, self.name).to(self.device)
-        self.trainer = self.Qtrainer(self.brain, self.lr, self.gamma)
-
-        if self.brain.load():
-            print("Model loaded")
-
-        print(f"AGENT ALPHA 8: training {self.name} with {self.device} device")
-
-    def get_state(self, game, player):
-        start = time.time()
-        x = player.x
-        y = player.y
-        i = y // player.size
-        j = x // player.size
-
-        other_player = game.players[0] if player.obj_type == 'seeker' else game.players[1]
-        other_player_i = other_player.y // other_player.size
-        other_player_j = other_player.x // other_player.size
-
-        objects = {'wall': '100000', 'floor': '010000', 'hider': '001000', 'movable_wall': '000100', 'seeker': '000010', 'map_edge': '000001'}
-
-        #av = {'sx': False, 'dx': False, 'u':False, 'd':False}
-        av = game.check_available_positions(player)
-        av_pos = [int(av['u']), int(av['dx']), int(av['d']), int(av['sx'])]
-
-        lidar = player.lidar
-        lidar_data = []
-        for elem in range(len(lidar)):
-            for n in objects[lidar[elem][0]]:
-                lidar_data.append(int(n))
-            lidar_data.append(lidar[elem][1])
-        #lidar_data = [0 0 0 0 0 1 7.56 , 100000 89.3 ...] (1-hot encoding obj_type + distance)
-
-        state = [i,j] + av_pos + lidar_data + [other_player_i, other_player_j]
-
-        return state
-
-    def get_action(self, state):
-        # tradeoff exploration / exploitation
-        final_action = [0, 0, 0, 0, 0, 0]
-        if np.random.random() > self.epsilon:
-            state = np.array(state)
-            current_state = torch.tensor(state, dtype=torch.float).to(self.device)
-            prediction = self.brain(current_state)
-            action = torch.argmax(prediction).item()
-            final_action[action] = 1
-        else:
-            if self.epsilon < 0.7:
-                action = random.randint(0, 5)     #second exploration phase (eps < 0.7) experiment all controls 
-            else:
-                action = random.randint(0, 3)     #first explorarion phase (eps=[1.0 - 0.7]) is just moving around the map
-            final_action[action] = 1
-
-        return final_action
-     
-    #method to perform only model prediction in game
-    def perform_action(self, state):
-        # tradeoff exploration / exploitation
-        final_action = [0, 0, 0, 0, 0, 0]
-        
-        state = np.array(state)
-        current_state = torch.tensor(state, dtype=torch.float).to(self.device)
-        prediction = self.brain(current_state)
-        action = torch.argmax(prediction).item()
-        final_action[action] = 1
-
-        return final_action
-
-    def remember(self, state, action, reward, next_state, gameover):
-        self.memory.append((state, action, reward, next_state, gameover))
-
-    def train_short_memory(self, state, action, reward, next_state, gameover):
-        start = time.time()
-        state = np.array(state)
-        next_state = np.array(next_state)
-        self.trainer.train_step(state, action, reward, next_state, gameover)
-        end = time.time()
-
-    def train_long_memory(self):
-        if len(self.memory) < self.batch_size:
-            return
-        else:
-            batch_sample = random.sample(self.memory, self.batch_size)
-
-        states, actions, rewards, next_states, gameovers = zip(*batch_sample)
-        #print('pre : ', type(states), len(states), len(states[0]),'\n')
-
-        # convert to numpy arrays
-        states = np.array(states)
-        actions = np.array(actions)
-        rewards = np.array(rewards)
-        next_states = np.array(next_states)
-        gameovers = np.array(gameovers)
-
-        self.trainer.train_step(states, actions, rewards, next_states, gameovers)
-
-        self.brain.save()
-
-        self.decrement_epsilon()
-
+    # Decrease epsilon
     def decrement_epsilon(self):
         self.epsilon = self.epsilon - self.eps_dec if self.epsilon > self.eps_min else self.eps_min
 
