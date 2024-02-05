@@ -562,7 +562,7 @@ class Agent_hivemind:
 
     # Load the replay memory SELECTIVELY from the file (when the function is called the file already exists)
     def load_replay_memory(self, criterion="reward"):
-        with open("./alpha_"+str(self.alpha)+"/memory/" + self.name +".txt", "r") as f:
+        with open("./hivemind/memory/" + self.name +".txt", "r") as f:
             # Define different sorting criteria for existing memory - note: in memory "reward" is the 3rd element of the lines
             if criterion == "abs_reward":
                 crit = lambda x: abs(float(x.split(";")[2]))    # highest reward's absolute value

@@ -4,28 +4,27 @@ import numpy as np
 
 
 
-agents = ["alpha_0", "alpha_1", "alpha_3", "hivemind_0", "alpha_2"]
+agents = ["alpha_0", "alpha_1", "alpha_3", "alpha_2", "hivemind_0"]
 
 for a in range(len(agents)):
 
     reward_path = "./"+agents[a]+"/reward"
     plot_path = "./"+agents[a]+"/reward_plots"
 
-    # Ottieni una lista di tutti i file nella cartella corrente
-
     if not os.path.exists(plot_path):
         os.makedirs(plot_path)
 
+    # List the content of the path
     files = os.listdir(reward_path)
 
-    # Filtra solo i file con estensione .txt
+    # Only files with .txt extension
     txt_files = [file for file in files if file.endswith('.txt')]
 
-    # Itera sui file .txt nella cartella
+    # Iterate over the files 
     for txt_file in txt_files:
         file_path = os.path.join(reward_path, txt_file)
 
-        # Leggi i dati dal file .txt
+        # Read data from file
         with open(file_path, 'r') as file:
 
             line = file.readline().strip()
@@ -34,37 +33,32 @@ for a in range(len(agents)):
 
                 values = line.split(';')
 
-                # Crea un array numpy per i dati
+                # Numpy array for the data
                 data = np.array(values[1:-1], dtype=int)
 
-                # Crea un nuovo grafico
+                # Create a new figure
                 plt.figure()
 
-                # Plotta i dati
+                # Plot the data
                 plt.plot(data)
 
-                # Aggiungi titolo e etichette degli assi se necessario
+                # Plot title
                 plt.title(f'{txt_file}')
+                # Axis labels
                 plt.xlabel('Generation')
                 plt.ylabel('Reward')
-
-
-                """new_ticks = [val for val in range(-100, 100 , 2)]
-                plt.yticks(new_ticks)"""
-
 
                 y_ticks = np.arange(min(data), max(data)+1, step=20)
                 plt.yticks(y_ticks)
 
-
-                # Salva il grafico come immagine
+                # Save plot
                 image_name = os.path.join(plot_path, f'grafico_{os.path.splitext(txt_file)[0]}.png')
                 plt.savefig(image_name)
 
-                # Chiudi il grafico corrente per passare al successivo
+                # Close plot
                 plt.close()
             else:
-                print(f"Il file {txt_file} contiene una riga vuota.")
+                print(f"File {txt_file} contains an empty line")
 
 
 

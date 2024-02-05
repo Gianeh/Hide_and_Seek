@@ -55,8 +55,10 @@ def main():
     game = Game(26, 26, 40, map_name, random_spawn)
 
     # Init Agents
-    hider = Agent_alpha(alpha=3, name='hider', Qtrainer=QTrainer_beta_1, lr=0.001, batch_size=1000, max_memory=5000)
-    seeker = Agent_alpha(alpha=3, name='seeker', Qtrainer=QTrainer_beta_1, lr=0.001, batch_size=1000, max_memory=5000)
+    #hider = Agent_alpha(alpha=3, name='hider', Qtrainer=QTrainer_beta_1, lr=0.001, batch_size=1000, max_memory=5000)
+    #seeker = Agent_alpha(alpha=3, name='seeker', Qtrainer=QTrainer_beta_1, lr=0.001, batch_size=1000, max_memory=5000)
+    hider = Agent_hivemind(name='hider', Qtrainer=QTrainer_beta_1, lr=0.001, batch_size=1000, max_memory=5000)
+    seeker = Agent_hivemind(name='seeker', Qtrainer=QTrainer_beta_1, lr=0.001, batch_size=1000, max_memory=5000)
 
     hider_trainer = ""
     if hider.Qtrainer == QTrainer:
