@@ -3,7 +3,7 @@ import pygame as pg
 import numpy as np
 from game import Game
 from agent import Agent_alpha, Agent_hivemind
-from models import QTrainer, QTrainer_beta_1
+from models import Primary_QTrainer, Target_QTrainer
 import sys
 import argparse
 import os
@@ -55,7 +55,7 @@ def main():
     # Grid parameters
     agents = [Agent_alpha, Agent_hivemind]
     alphas = [0, 1, 2, 3]
-    trainers = [QTrainer, QTrainer_beta_1]
+    trainers = [Primary_QTrainer, Target_QTrainer]
     LRs = [0.1, 0.01, 0.001]
     batch_sizes = [1000, 5000, 10000]
     max_memories = [5000, 10000, 50000]
@@ -89,10 +89,10 @@ def main():
                             if hide:
                                 # Hider settings
                                 hider_trainer = ""
-                                if hider.Qtrainer == QTrainer:
-                                    hider_trainer = "Qtrainer"
-                                elif hider.Qtrainer == QTrainer_beta_1:
-                                    hider_trainer = "QTrainer_beta_1"
+                                if hider.Qtrainer == Primary_QTrainer:
+                                    hider_trainer = "Primary_QTrainer"
+                                elif hider.Qtrainer == Target_QTrainer:
+                                    hider_trainer = "Target_QTrainer"
                                 hider_eps_dec = "-1 per game" 
                                 hider_eps_min = "0"
                                 hider_layers = hider.brain.conv_mlp_layers if hider.agent_name == "hivemind" else  hider.brain.layer_list
@@ -101,10 +101,10 @@ def main():
                             if seek:
                                 # Seeker settings
                                 seeker_trainer = ""
-                                if seeker.Qtrainer == QTrainer:
-                                    seeker_trainer = "Qtrainer"
-                                elif seeker.Qtrainer == QTrainer_beta_1:
-                                    seeker_trainer = "QTrainer_beta_1"
+                                if seeker.Qtrainer == Primary_QTrainer:
+                                    seeker_trainer = "Primary_QTrainer"
+                                elif seeker.Qtrainer == Target_QTrainer:
+                                    seeker_trainer = "Target_QTrainer"
                                 seeker_eps_dec = "-1 per game" 
                                 seeker_eps_min = "0"
                                 seeker_layers = hider.brain.conv_mlp_layers if seeker.agent_name == "hivemind" else  seeker.brain.layer_list

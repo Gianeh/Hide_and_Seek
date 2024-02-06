@@ -95,7 +95,8 @@ class ConvQNet(nn.Module):
         return True
 
 # Q-Learning Algortihm using Bellman Equation
-class QTrainer:
+# This QTrainer doesn't make distinction between primary and target network
+class Primary_QTrainer:
     def __init__(self, model, lr, gamma, convolutional=False):
         self.lr = lr
         self.gamma = gamma  # Discount factor (takes into account future expected rewards)
@@ -177,7 +178,8 @@ class QTrainer:
         #                                                                                       ^^^^ (1.5)
 
 # Q-Learning Algortihm using Bellman Equation and a target network
-class QTrainer_beta_1:
+# This QTrainer makes distinction between primary and target network, updating the second one after a certain number of train steps (update_steps)
+class Target_QTrainer:
     def __init__(self, model, lr, gamma, convolutional=False, update_steps = 100):
         self.lr = lr
         self.gamma = gamma      # Discount factor (takes into account future expected rewards)

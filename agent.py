@@ -2,7 +2,7 @@ import torch
 import random
 from collections import deque
 import numpy as np
-from models import QTrainer, QTrainer_beta_1, QNet, ConvQNet
+from models import Primary_QTrainer, Target_QTrainer, QNet, ConvQNet
 import os
 import ast # to easily load memory from file (used in Hive_mind)
 
@@ -20,7 +20,7 @@ LR = 0.0005
     # Agent Alpha 2 comes to life after considerations made on hivemind prototypes, what about mimicking other examples of the same game? the state space is completely changed again in advantage of a coordinate/distance representation
     # Agent Alpha 3 is a test on the alpha 1 encoding, the state is the same but removing the position and the direction to obtain a simpler representation
 class Agent_alpha:
-    def __init__(self, alpha=0, name='model', Qtrainer=QTrainer, lr = LR, batch_size = BATCH_SIZE, max_memory = MAX_MEMORY):
+    def __init__(self, alpha=0, name='model', Qtrainer=Primary_QTrainer, lr = LR, batch_size = BATCH_SIZE, max_memory = MAX_MEMORY):
         # Agent name corresponds to the alpha generation and is used to save and load the model, configs and memory
         self.agent_name = "alpha_" + str(alpha)
         # Alpha generation number (0,1,2,3)
@@ -499,7 +499,7 @@ class Agent_alpha:
 
 # Hivemind, as the name suggests, is meant to be able to predict next action taking into account the whole map image - It's the only Agent that takes advantage of the Convolutional Neural Network
 class Agent_hivemind:
-    def __init__(self, name='model', Qtrainer=QTrainer, lr = LR, batch_size = BATCH_SIZE, max_memory = MAX_MEMORY):
+    def __init__(self, name='model', Qtrainer=Primary_QTrainer, lr = LR, batch_size = BATCH_SIZE, max_memory = MAX_MEMORY):
         # Agent name is used to save and load the model, configs and memory
         self.agent_name = "hivemind"
         # Seeker or Hider
@@ -750,7 +750,7 @@ class Agent_hivemind:
     # Agent Beta 3 doesn't use the view of the players and only relies on the neighbourhood and positions, with the smallest input size of the series, it keeps the deep architecture of Beta 2 (with fewer neurons per layer)
     # Agent Beta 4 is the only one to employ the lidar vision system paired with positions and available actions, no longer relying on the player's view and neighbourhood
 class Agent_beta:
-    def __init__(self, beta=0, name='model', Qtrainer=QTrainer_beta_1, lr=0.0005, batch_size=1000, max_memory=100000, eps_dec= 5e-4, eps_min = 0.01):
+    def __init__(self, beta=0, name='model', Qtrainer=Target_QTrainer, lr=0.0005, batch_size=1000, max_memory=100000, eps_dec= 5e-4, eps_min = 0.01):
         # Beta generation number (0,1,2,3,4)
         self.beta = beta
         # Agent name corresponds to the beta generation and is used to save and load the model, configs and memory
@@ -1147,7 +1147,7 @@ class Perfect_seeker:
 
 # Agent Small_brain is an experiment for the hider, he literally only knows if positions around him are available or not and if it's opponent is on a certain side plus the distance
 class Small_brain:
-    def __init__(self, name='model', Qtrainer=QTrainer_beta_1, lr=0.001, batch_size=1000, max_memory=100000, epsilon = 1.0, eps_dec= 5e-4, eps_min = 0.05):
+    def __init__(self, name='model', Qtrainer=Target_QTrainer, lr=0.001, batch_size=1000, max_memory=100000, epsilon = 1.0, eps_dec= 5e-4, eps_min = 0.05):
         self.agent_name = "small_brain"
         # Seeker or Hider
         self.name = name
