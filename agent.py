@@ -1093,26 +1093,29 @@ class Agent_beta:
         self.epsilon = self.epsilon - self.eps_dec if self.epsilon > self.eps_min else self.eps_min
 
 # Agent Perfect_seeker is a cheater, never lend him your money, he uses no neural model or learn at all but in empty maps is really good at finding hiders
-class Perfect_seeker_0:
+    # It's used to test learning with other agents on the Hider side
+class Perfect_seeker:
     def __init__(self, name='model'):
 
-        self.agent_name = "perfect_seeker_0"
+        self.agent_name = "perfect_seeker"
         self.name = name
         self.n_games = 0        # Number of games played
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        print(f"AGENT PERFECT SEEKER 0: playing as {self.name}")
+        print(f"AGENT PERFECT SEEKER: playing as {self.name}")
 
-    # only uses game and other information to find perfect moves
+    # Only uses game and other information to find perfect moves (in empy maps)
     def get_state(self, game, player):
         return {"player": player, "other": game.players[0]}
 
     # Based on relative position take an action to reach your opponent
     def get_action(self, state):
-        # strategy: move towards the hider one step at a time
+        # Strategy: move towards the hider one step at a time
         other = state["other"]
         player = state["player"]
 
-        # Perfect_seeker_0 -is dumb walls are a big problem for him
+        # Perfect_seeker is dumb, walls are a big problem for him
+
+        # In order to achieve a certain degree of randomness, the order of the moves is reversed in the two plans A and B, with 50% chance of choosing one or the other
         chance = random.randint(0, 1)
         if chance == 0:
             # plan A:
@@ -1140,12 +1143,12 @@ class Perfect_seeker_0:
             else:
                 return [0, 0, 0, 0, 0, 1]
 
-        # perfect seeker 0 never moves walls
+        # Perfect seeker never moves walls
 
-# Agent Small_brain is an experiment, for the hider, he literally only knows if positions around him are available or not and the position of it's opponent + distance
-class Small_brain_0:
+# Agent Small_brain is an experiment for the hider, he literally only knows if positions around him are available or not and if it's opponent is on a certain side plus the distance
+class Small_brain:
     def __init__(self, name='model', Qtrainer=QTrainer_beta_1, lr=0.001, batch_size=1000, max_memory=100000, epsilon = 1.0, eps_dec= 5e-4, eps_min = 0.05):
-        self.agent_name = "small_brain_0"
+        self.agent_name = "small_brain"
         # Seeker or Hider
         self.name = name
         # Qtrainer class is instantiated without parameters to include it in the config file
@@ -1167,7 +1170,7 @@ class Small_brain_0:
         if self.brain.load():
             print("Model loaded")
 
-        print(f"AGENT SMALL_BRAIN_0: training {self.name} with {self.device} device")
+        print(f"AGENT SMALL BRAIN: training {self.name} with {self.device} device")
 
     # Get the state of the game for the agent 
     def get_state(self, game, player):
@@ -1183,9 +1186,10 @@ class Small_brain_0:
         # Available positions for the next taken action - {'sx': False, 'dx': False, 'u':False, 'd':False}
         av = game.check_available_positions(player)
         
+        # Encode the available positions
         av_pos = [int(av['u']), int(av['dx']), int(av['d']), int(av['sx'])]
         rel_distance = np.sqrt((other_player_i - i)**2 + (other_player_j - j)**2) / (game.rows + game.cols)
-
+        
         sx = int(other_player_j - j <= 0)
         dx = int(other_player_j - j >= 0)
         u = int(other_player_i - i <= 0)
@@ -1195,7 +1199,7 @@ class Small_brain_0:
 
         return state
 
-    # Pich the next action to take
+    # Pick the next action to take
     def get_action(self, state):
         # Final action is one-hot encoded vector
         final_action = [0, 0, 0, 0, 0, 0]

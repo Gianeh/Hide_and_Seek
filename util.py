@@ -2,7 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import os
 
-
+# A function to plot the learning curve of an agent
 def plot_learning_curve(x, scores, epsilons, filename, agent_name, player_type, play=False):
 
     # Create a new figure
@@ -25,11 +25,11 @@ def plot_learning_curve(x, scores, epsilons, filename, agent_name, player_type, 
     ax.tick_params(axis='x', colors="C0")
     ax.tick_params(axis='y', colors="C0")
 
-   # Running average of reward scores over a window of 100 games 
+    # Running average of reward scores over a window of 100 games 
     N = len(scores)
     running_avg = np.empty(N)
     for t in range(N):
-        running_avg[t] = np.mean(scores[max(0, t-100):(t+1)])       #avg over 100 games if n_games > 100 else avg over n_games
+        running_avg[t] = np.mean(scores[max(0, t-100):(t+1)])       # avg over 100 games if n_games > 100 else avg over n_games
     # Plot of the running average
     ax2.scatter(x,running_avg, color = "C1", s=20)
 

@@ -1,7 +1,7 @@
 import numpy as np
 import pygame as pg
 from game import Game
-from agent import Agent_beta, Perfect_seeker_0, Small_brain_0
+from agent import Agent_beta, Perfect_seeker, Small_brain
 from models import QTrainer_beta_1, QTrainer
 import sys
 import argparse
@@ -16,7 +16,7 @@ WINTIME = 4
 
 
 def main():
-    # parse arguments to select which agent to train
+    # Parse arguments to select game/training mode, map, and rendering options
     parser = argparse.ArgumentParser(description='Hide and Seek RL in a grid!')
     parser.add_argument('--hide', action='store_true', help='train the hider')
     parser.add_argument('--seek', action='store_true', help='train the seeker')
@@ -28,19 +28,23 @@ def main():
     parser.add_argument('--random_spawn', action='store_true', help='spawn players randomly')
     args = parser.parse_args()
 
-    hide = args.hide
-    seek = args.seek
-    perfect_seeker = args.perfect_seeker
+    hide = args.hide    # Train the hider or not
+    seek = args.seek    # Train the seeker or not
+    perfect_seeker = args.perfect_seeker    # Employ perfect seeker or not
 
     if perfect_seeker and seek:
         print("seeker can only be trained or perfect, can't be both! using perfect seeker")
         seek = False
 
+    # Rendering options
     lidar = args.lidar
     view = args.view
     scores = args.scores
+    
+    # Random spawn option
     random_spawn = args.random_spawn
 
+    # Map selection
     if args.map is None:
         print("No map chosen. using empty map!")
         map_name = 'empty.txt'
@@ -57,125 +61,157 @@ def main():
     hider = Agent_beta(beta=4, name='hider', lr=0.0005, batch_size=5000,max_memory=1000000, eps_dec=2e-4, eps_min=0.15)
     seeker = Agent_beta(beta=4, name='seeker', lr=0.0005, batch_size=5000,max_memory=1000000, eps_dec=2e-4, eps_min=0.15) if not perfect_seeker else Perfect_seeker_0('seeker')
     
-    hider_trainer = ""
-    if hider.Qtrainer == QTrainer:
-        hider_trainer = "Qtrainer"
-    elif hider.Qtrainer == QTrainer_beta_1:
-        hider_trainer = "QTrainer_beta_1"
-    hider_reward_criterion = 'smart_evasion'
     if hide:
+        # Hider settings
+        hider_trainer = ""
+        if hider.Qtrainer == QTrainer:
+            hider_trainer = "Qtrainer"
+        elif hider.Qtrainer == QTrainer_beta_1:
+            hider_trainer = "QTrainer_beta_1"
+
+        hider_reward_criterion = 'smart_evasion'    # Reward criterion for the hider
+
         write_config(hider.agent_name, hider.name, map_name, hider_trainer, hider.lr, hider.batch_size, hider.max_memory, hider.epsilon, hider.eps_dec, hider.eps_min, hider.brain.layer_list, hider_reward_criterion)
 
     if not perfect_seeker and seek:
+        # Seeker settings
         seeker_trainer = ""
         if seeker.Qtrainer == QTrainer:
             seeker_trainer = "Qtrainer"
         elif seeker.Qtrainer == QTrainer_beta_1:
             seeker_trainer = "QTrainer_beta_1"
-        seeker_reward_criterion = 'smart_evasion'
+
+        seeker_reward_criterion = 'smart_evasion'   # Reward criterion for the seeker
+
         write_config(seeker.agent_name, seeker.name, map_name, seeker_trainer, seeker.lr, seeker.batch_size, seeker.max_memory, seeker.epsilon, seeker.eps_dec, seeker.eps_min, seeker.brain.layer_list, seeker_reward_criterion)
 
     seeker_rewards, seeker_eps_history = [], []
     hider_rewards, hider_eps_history = [], []
 
+    # Game render and logic parameters
     frames = 0
     framerate = 60
     gameover = False
     stop = False
     render = True
 
+    # GAME LOOP
     while True:
 
         for event in pg.event.get():
-            # close the window
+            # Close the window
             if event.type == pg.QUIT:
                 pg.quit()
                 sys.exit()
 
-            # in-game commands
+            # In-game commands
             if event.type == pg.KEYDOWN:
                 if event.key == pg.K_ESCAPE:
                     pg.quit()
                     sys.exit()
                 if event.key == pg.K_SPACE:
-                    # toggle graphics rendering and limited framerate
+                    # Toggle graphics rendering and limited framerate
                     render = not render
                 if event.key == pg.K_e:
-                    # explore
+                    # Explore
                     hider.epsilon = 1.0
                     seeker.epsilon = 1.0
                     print("Agents can now explore again!")
                 if event.key == pg.K_x:
-                    # exploit
+                    # Exploit
                     hider.epsilon = hider.eps_min
                     seeker.epsilon = seeker.eps_min
                     print(f"Agents are now exploiting with epsilon -> hider: {hider.eps_min} seeker: {seeker.eps_min}!")
                 if event.key == pg.K_UP:
-                    # increase framerate
+                    # Increase framerate
                     framerate += 10
                     print(f"framerate up: {framerate}")
                 if event.key == pg.K_DOWN:
-                    # decrease framerate
+                    # Decrease framerate
                     framerate -= 10
                     print(f"framerate down: {framerate}")
                     if framerate < 0: framerate = 1
-                if event.key == pg.K_p:
-                    # pause
-                    pg.event.wait()
-                    print("Game paused!")
                 if event.key == pg.K_l:
+                    # Render lidar vision
                     lidar = not lidar
                     print("Toggled Lidar visualization")
                 if event.key == pg.K_v:
+                    # Render agent view
                     view = not view
                     print("Toggled Agent View visualization")
                 if event.key == pg.K_s:
+                    # Render scores
                     scores = not scores
                     print("Toggled Scores visualization")
 
 
-        # let the Agents control the players
-
+        # Let the Agents control the players
+        # To avoid overlapping after both agents move, the game is turn based
+                    
+        # Hider turn
         if frames % 2 and hide:
+            # Fill the view
             game.players[0].look()
+            # Fill the lidar vision
             game.players[0].trigger_lidar()
+            # Acquire current state
             hider_state = hider.get_state(game, game.players[0])
+            # Get the action
             hider_action = hider.get_action(hider_state)
+            # Perform the action and make sure it was valid
             valid_action = game.control_player(game.players[0], hider_action)
+            # Get the reward
             hider_reward = game.reward(game.players[0], valid_action, WINTIME, frames, MAX_TIME, criterion=hider_reward_criterion)
+            # Get the new state
             hider_new_state = hider.get_state(game, game.players[0])
+            # Remember this game step
             hider.remember(hider_state, hider_action, hider_reward, hider_new_state, gameover)
 
+        # Seeker turn
         if not frames % 2 and seek:
+            # Fill the view
             game.players[1].look()
+            # Fill the lidar vision
             game.players[1].trigger_lidar()
+            # Acquire current state
             seeker_state = seeker.get_state(game, game.players[1])
+            # Get the action
             seeker_action = seeker.get_action(seeker_state)
+            # Perform the action and make sure it was valid
             valid_action = game.control_player(game.players[1], seeker_action)
+            # Get the reward
             seeker_reward = game.reward(game.players[1], valid_action, WINTIME, frames, MAX_TIME, criterion=seeker_reward_criterion)
+            # Get the new state
             seeker_new_state = seeker.get_state(game, game.players[1])
+            # Remember this game step
             seeker.remember(seeker_state, seeker_action, seeker_reward, seeker_new_state, gameover)
 
+        # Perfect Seeker turn
         if perfect_seeker and not frames % 2:
+            # Fill the lidar vision
             game.players[1].trigger_lidar()
+            # Acquire current state
             seeker_state = seeker.get_state(game, game.players[1])
+            # Get the action
             seeker_action = seeker.get_action(seeker_state)
+            # Perform the action
             game.control_player(game.players[1], seeker_action)
-            # let seeker look and see in order to update the seen variable
+            # Let seeker look and see in order to update the seen variable as it is not done in the reward function
             game.players[1].look()
             game.players[1].see()
 
 
         frames += 1
 
-        # check if gameover
+        # Check if seeker wins
         if game.players[1].seen >= WINTIME:
             gameover = True
 
+        # Check if hider wins
         if frames >= MAX_TIME:
             stop = True
 
-        # update screen
+        # Update screen
         if render:
 
             if gameover or stop:
@@ -189,7 +225,7 @@ def main():
 
         if gameover or stop:
 
-            # considering turn based operation, reward is only given to the agent that made the last move
+            # Considering turn based operation, reward is only given to the agent that made the last move
             if frames % 2 and hide:
                 hider_reward = game.reward(game.players[0], valid_action, WINTIME, frames, MAX_TIME, criterion=hider_reward_criterion)
                 hider_state = hider.get_state(game, game.players[0])
@@ -211,13 +247,18 @@ def main():
             if not perfect_seeker and seek: 
                 print(f"\033[94mSeeker Epsilon: {seeker.epsilon}\033[0m")
                 print(f"\033[94mSeeker Reward: {game.players[1].reward}\033[0m")
-                
+            
+
+            # Save epoch reward to a file
             if hide:
                 hider_file_path = "./" + hider.agent_name + "/reward/reward_" + hider.name + ".txt"
                 if not os.path.exists("./" + hider.agent_name + "/reward"):
                     os.makedirs("./" + hider.agent_name + "/reward")
                 with open(hider_file_path, "a") as f:
                     f.write(str(game.players[0].reward) + ";")
+                
+                # Batch training
+                hider.train_long_memory()
 
             if seek:
                 seeker_file_path = "./" + seeker.agent_name + "/reward/reward_" + seeker.name + ".txt"
@@ -226,19 +267,20 @@ def main():
                 with open(seeker_file_path, "a") as f:
                     f.write(str(game.players[1].reward) + ";")
 
-
-            if hide: hider.train_long_memory()
-            if seek: seeker.train_long_memory()
+                # Batch training
+                seeker.train_long_memory()
 
 
             hider.n_games += 1
             seeker.n_games += 1
 
+
+            # Log average reward and plot learning curve
             if not perfect_seeker and seek:
                 seeker_rewards.append(game.players[1].reward)
                 seeker_eps_history.append(seeker.epsilon)
                 seeker_avg_reward = np.mean(seeker_rewards[-100:])
-                print('Game: ', seeker.n_games, ' Seeker reward %.2f' % game.players[1].reward, 'average reward %.2f' % seeker_avg_reward, 'epsilon %.2f' % seeker.epsilon)
+                print('Seeker average reward %.2f' % seeker_avg_reward)
 
                 seeker_filename = 'seeker_'+seeker.agent_name+'.png'
                 if seeker.n_games % 10 == 0 and seeker.n_games != 0:
@@ -249,7 +291,7 @@ def main():
                 hider_rewards.append(game.players[0].reward)
                 hider_eps_history.append(hider.epsilon)
                 hider_avg_reward = np.mean(hider_rewards[-100:])
-                print('Game: ', hider.n_games, ' Hider reward %.2f' % game.players[0].reward, 'average reward %.2f' % hider_avg_reward, 'epsilon %.2f' % hider.epsilon)
+                print('Hider average reward %.2f' % hider_avg_reward)
 
                 hider_filename = 'hider_'+hider.agent_name+'.png'
                 if hider.n_games % 10 == 0 and hider.n_games != 0:
@@ -257,6 +299,7 @@ def main():
                     plot_learning_curve(x, hider_rewards, hider_eps_history, hider_filename, hider.agent_name, 'Hider')
 
 
+            # Reset the game
             game.reset()
             frames = 0
             gameover = False
