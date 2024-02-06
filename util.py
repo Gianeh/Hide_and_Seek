@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 import os
 
 
-def plot_learning_curve(x, scores, epsilons, filename, agent_name, player_type):
+def plot_learning_curve(x, scores, epsilons, filename, agent_name, player_type, play=False):
     fig = plt.figure()
     ax = fig.add_subplot(111, label="1")
     ax2 = fig.add_subplot(111, label="2", frame_on=False)
@@ -25,10 +25,17 @@ def plot_learning_curve(x, scores, epsilons, filename, agent_name, player_type):
     ax2.yaxis.set_label_position('right')
     ax2.tick_params(axis='y', colors="C1")
 
-    if not os.path.exists("./"+agent_name+"/train_plots"):
-        os.makedirs("./"+agent_name+"/train_plots")
+    if not play :
+        if not os.path.exists("./"+agent_name+"/train_plots"):
+            os.makedirs("./"+agent_name+"/train_plots")
 
-    plt.savefig("./"+agent_name+"/train_plots/"+filename)
+        plt.savefig("./"+agent_name+"/train_plots/"+filename)
+
+    else:
+        if not os.path.exists("./"+agent_name+"/play_plots"):
+            os.makedirs("./"+agent_name+"/play_plots")
+
+        plt.savefig("./"+agent_name+"/play_plots/"+filename)
 
     # close the plot to avoid overhead
     plt.close()
