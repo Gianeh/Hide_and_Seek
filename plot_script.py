@@ -4,12 +4,14 @@ import numpy as np
 
 
 
-agents = ["alpha_0", "alpha_1", "alpha_3", "alpha_2", "hivemind_0"]
+agents = ["alpha_0", "alpha_1", "alpha_2", "alpha_3", "hivemind_0"]
 
 for a in range(len(agents)):
 
     reward_path = "./"+agents[a]+"/reward"
     plot_path = "./"+agents[a]+"/reward_plots"
+
+    if not os.path.exists("./"+agents[a]): continue
 
     if not os.path.exists(plot_path):
         os.makedirs(plot_path)
@@ -34,7 +36,7 @@ for a in range(len(agents)):
                 values = line.split(';')
 
                 # Numpy array for the data
-                data = np.array(values[1:-1], dtype=int)
+                data = np.array(values[1:-1], dtype=float)
 
                 # Create a new figure
                 plt.figure()
@@ -52,7 +54,7 @@ for a in range(len(agents)):
                 plt.yticks(y_ticks)
 
                 # Save plot
-                image_name = os.path.join(plot_path, f'grafico_{os.path.splitext(txt_file)[0]}.png')
+                image_name = os.path.join(plot_path, f'plot_{os.path.splitext(txt_file)[0]}.png')
                 plt.savefig(image_name)
 
                 # Close plot
