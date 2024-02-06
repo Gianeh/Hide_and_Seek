@@ -17,7 +17,7 @@ WINTIME = 4
 
 
 def main():
-    # parse arguments to select which agent to train
+    # Parse arguments to select game/training modes, map and Rendering options
     parser = argparse.ArgumentParser(description='Hide and Seek RL in a grid!')
     parser.add_argument('--hide', action='store_true', help='train the hider')
     parser.add_argument('--seek', action='store_true', help='train the seeker')
@@ -28,14 +28,18 @@ def main():
     parser.add_argument('--random_spawn', action='store_true', help='spawn players randomly')
     args = parser.parse_args()
 
-    hide = args.hide
-    seek = args.seek
+    hide = args.hide        # Train the hider or not
+    seek = args.seek        # Train the seeker or not
 
+    # Rendering options
     lidar = args.lidar
     view = args.view
     scores = args.scores
+
+    # Random spawn option
     random_spawn = args.random_spawn
 
+    # Map selection
     if args.map is None:
         print("No map chosen. using empty map!")
         map_name = 'empty.txt'
@@ -48,18 +52,24 @@ def main():
     # Init Game
     game = Game(26, 26, 40, map_name, random_spawn)
 
+    # Grid parameters
     agents = [Agent_alpha, Agent_hivemind]
     alphas = [0, 1, 2, 3]
     trainers = [QTrainer, QTrainer_beta_1]
     LRs = [0.1, 0.01, 0.001]
     batch_sizes = [1000, 5000, 10000]
     max_memories = [5000, 10000, 50000]
-    MAX_GENERATION = 350
+    seeker_reward_criterion = 'explore'
+    hider_reward_criterion = 'explore'
+    reward_replay_interval = 20
+    neg_reward_replay_interval = 10
+    clean_memory_interval = 30
+    MAX_GENERATION = 500
 
-    for a in range(len(agents)):
+    for ag in range(len(agents)):
         for alpha in range(len(alphas)):
             # If Hivemind has completed all hyperparameters configurations -> break
-            if a == 1 and alpha > 0: break
+            if ag == 1 and alpha > 0: break
             for t in range(len(trainers)):
                 for l in range(len(LRs)):
                     for b in range(len(batch_sizes)):
@@ -68,27 +78,28 @@ def main():
                             # Init Agents
 
                             # Agent_alpha
-                            if a == 0:
-                                hider = agents[a](alphas[alpha], 'hider_'+str(m)+str(b)+str(l)+str(t), trainers[t], LRs[l], batch_sizes[b], max_memories[m])
-                                seeker = agents[a](alphas[alpha], 'seeker_'+str(m)+str(b)+str(l)+str(t), trainers[t], LRs[l], batch_sizes[b], max_memories[m])
+                            if ag == 0:
+                                hider = agents[ag](alphas[alpha], 'hider_'+str(m)+str(b)+str(l)+str(t), trainers[t], LRs[l], batch_sizes[b], max_memories[m])
+                                seeker = agents[ag](alphas[alpha], 'seeker_'+str(m)+str(b)+str(l)+str(t), trainers[t], LRs[l], batch_sizes[b], max_memories[m])
                             # Agent_hivemind
                             else:
-                                hider = agents[a]('hider_'+str(m)+str(b)+str(l)+str(t), trainers[t], LRs[l], batch_sizes[b], max_memories[m])
-                                seeker = agents[a]('seeker_'+str(m)+str(b)+str(l)+str(t), trainers[t], LRs[l], batch_sizes[b], max_memories[m])
+                                hider = agents[ag]('hider_'+str(m)+str(b)+str(l)+str(t), trainers[t], LRs[l], batch_sizes[b], max_memories[m])
+                                seeker = agents[ag]('seeker_'+str(m)+str(b)+str(l)+str(t), trainers[t], LRs[l], batch_sizes[b], max_memories[m])
 
-                            hider_trainer = ""
-                            if hider.Qtrainer == QTrainer:
-                                hider_trainer = "Qtrainer"
-                            elif hider.Qtrainer == QTrainer_beta_1:
-                                hider_trainer = "QTrainer_beta_1"
-                            hider_eps_dec = "-1 per game" 
-                            hider_eps_min = "0"
-                            hider_layers = hider.brain.conv_mlp_layers if hider.agent_name == "hivemind" else  hider.brain.layer_list
-                            hider_reward_criterion = 'explore'
                             if hide:
+                                # Hider settings
+                                hider_trainer = ""
+                                if hider.Qtrainer == QTrainer:
+                                    hider_trainer = "Qtrainer"
+                                elif hider.Qtrainer == QTrainer_beta_1:
+                                    hider_trainer = "QTrainer_beta_1"
+                                hider_eps_dec = "-1 per game" 
+                                hider_eps_min = "0"
+                                hider_layers = hider.brain.conv_mlp_layers if hider.agent_name == "hivemind" else  hider.brain.layer_list
                                 write_config(hider.agent_name, hider.name, map_name, hider_trainer, hider.lr, hider.batch_size, hider.max_memory, hider.epsilon, hider_eps_dec, hider_eps_min, hider_layers, hider_reward_criterion)
                             
                             if seek:
+                                # Seeker settings
                                 seeker_trainer = ""
                                 if seeker.Qtrainer == QTrainer:
                                     seeker_trainer = "Qtrainer"
@@ -97,7 +108,6 @@ def main():
                                 seeker_eps_dec = "-1 per game" 
                                 seeker_eps_min = "0"
                                 seeker_layers = hider.brain.conv_mlp_layers if seeker.agent_name == "hivemind" else  seeker.brain.layer_list
-                                seeker_reward_criterion = 'explore'
                                 write_config(seeker.agent_name, seeker.name, map_name, seeker_trainer, seeker.lr, seeker.batch_size, seeker.max_memory, seeker.epsilon, seeker_eps_dec, seeker_eps_min, seeker_layers, seeker_reward_criterion)
 
                             seeker_rewards, seeker_eps_history = [], []
@@ -110,57 +120,59 @@ def main():
                             stop = False
                             render = True
 
+                            # GAME LOOP
                             while True:
-                                # close the window
+                                # Close the window
                                 for event in pg.event.get():
                                     if event.type == pg.QUIT:
                                         pg.quit()
                                         sys.exit()
 
-                                    # in-game commands
+                                    # In-game commands
                                     if event.type == pg.KEYDOWN:
                                         if event.key == pg.K_ESCAPE:
                                             pg.quit()
                                             sys.exit()
                                         if event.key == pg.K_SPACE:
-                                            # toggle graphics rendering and limited framerate
+                                            # Toggle graphics rendering and limited framerate
                                             render = not render
                                         if event.key == pg.K_e:
-                                            # explore
+                                            # Explore
                                             hider.epsilon = 200
                                             seeker.epsilon = 200
                                             print("Agents can now explore again!")
                                         if event.key == pg.K_x:
-                                            # exploit
+                                            # Exploit
                                             hider.epsilon = 0
                                             seeker.epsilon = 0
                                             print(f"Agents are now exploiting with epsilon -> hider: {hider.epsilon} seeker: {seeker.epsilon}!")
                                         if event.key == pg.K_UP:
-                                            # increase framerate
+                                            # Increase framerate
                                             framerate += 10
                                             print(f"framerate up: {framerate}")
                                         if event.key == pg.K_DOWN:
-                                            # decrease framerate
+                                            # Decrease framerate
                                             framerate -= 10
                                             print(f"framerate down: {framerate}")
                                             if framerate < 0: framerate = 1 
-                                        if event.key == pg.K_p:
-                                            # pause
-                                            pg.event.wait()
-                                            print("Game paused!")
                                         if event.key == pg.K_l:
+                                            # Render lidar vision
                                             lidar = not lidar
                                             print("Toggled Lidar visualization")
                                         if event.key == pg.K_v:
+                                            # Render agent view
                                             view = not view
                                             print("Toggled Agent View visualization")
                                         if event.key == pg.K_s:
+                                            # Render scores
                                             scores = not scores
                                             print("Toggled Scores visualization")
 
 
-                                # let the Agents control the players
-                                
+                                # Let the Agents control the players
+                                # To avoid overlapping after both agents move, the game is turn based
+                                            
+                                # Hider turn
                                 if frames % 2 and hide:
                                     game.players[0].look()
                                     game.players[0].trigger_lidar()
@@ -172,6 +184,7 @@ def main():
                                     hider.train_short_memory(hider_state, hider_action, hider_reward, hider_new_state, gameover)
                                     hider.remember(hider_state, hider_action, hider_reward, hider_new_state, gameover)
                                 
+                                # Seeker turn
                                 if not frames % 2 and seek:
                                     game.players[1].look()
                                     game.players[1].trigger_lidar()
@@ -186,14 +199,15 @@ def main():
 
                                 frames += 1
 
-                            # check if gameover
+                                # Check if seeker wins
                                 if game.players[1].seen >= WINTIME:
                                     gameover = True
 
+                                # Check if hider wins
                                 if frames >= MAX_TIME:
                                     stop = True
 
-                                # update screen
+                                # Update screen
                                 if render:
 
                                     if gameover or stop:
@@ -237,6 +251,8 @@ def main():
                                         with open(hider_file_path, "a") as f:
                                             f.write(str(game.players[0].reward) + ";")
 
+                                        hider.train_long_memory()
+
                                     if seek:
                                         seeker_file_path = "./"+seeker.agent_name+"/reward/reward_"+seeker.name+".txt"
                                         if not os.path.exists("./"+seeker.agent_name+"/reward"):
@@ -244,9 +260,7 @@ def main():
                                         with open(seeker_file_path, "a") as f:
                                             f.write(str(game.players[1].reward) + ";")
 
-
-                                    if hide: hider.train_long_memory()
-                                    if seek: seeker.train_long_memory()
+                                        seeker.train_long_memory()
 
 
                                     hider.n_games += 1
@@ -256,7 +270,7 @@ def main():
                                         seeker_rewards.append(game.players[1].reward)
                                         seeker_eps_history.append(seeker.epsilon)
                                         seeker_avg_reward = np.mean(seeker_rewards[-100:])
-                                        print('Game: ', seeker.n_games, ' Seeker reward %.2f' % game.players[1].reward, 'average reward %.2f' % seeker_avg_reward, 'epsilon %.2f' % seeker.epsilon)
+                                        print('Seeker average reward %.2f' % seeker_avg_reward)
 
                                         seeker_filename = 'seeker_'+seeker.agent_name+'_'+str(m)+str(b)+str(l)+str(t)+'.png'
                                         if seeker.n_games % 10 == 0 and seeker.n_games != 0:
@@ -267,7 +281,7 @@ def main():
                                         hider_rewards.append(game.players[0].reward)
                                         hider_eps_history.append(hider.epsilon)
                                         hider_avg_reward = np.mean(hider_rewards[-100:])
-                                        print('Game: ', hider.n_games, ' Hider reward %.2f' % game.players[0].reward, 'average reward %.2f' % hider_avg_reward, 'epsilon %.2f' % hider.epsilon)
+                                        print('Hider average reward %.2f' % hider_avg_reward)
 
                                         hider_filename = 'hider_'+hider.agent_name+'_'+str(m)+str(b)+str(l)+str(t)+'.png'
                                         if hider.n_games % 10 == 0 and hider.n_games != 0:
@@ -275,25 +289,27 @@ def main():
                                             plot_learning_curve(x, hider_rewards, hider_eps_history, hider_filename, hider.agent_name, 'Hider')
 
                                     
-                                    if (hider.n_games % 20 == 0 or seeker.n_games % 20 == 0) and (hider.n_games != 0 and seeker.n_games != 0):
+                                    # Train using replay memory and clean memory file every arbitrary number of games
+                                    if (hider.n_games % reward_replay_interval == 0 or seeker.n_games % reward_replay_interval == 0) and (hider.n_games != 0 and seeker.n_games != 0):
                                         if hide : hider.train_replay("reward")
                                         if seek : seeker.train_replay("reward")
                                     
-                                    if (hider.n_games % 10 == 0 or seeker.n_games % 10 == 0) and (hider.n_games != 0 and seeker.n_games != 0):
+                                    if (hider.n_games % neg_reward_replay_interval == 0 or seeker.n_games % neg_reward_replay_interval == 0) and (hider.n_games != 0 and seeker.n_games != 0):
                                         if hide : hider.train_replay("neg_reward")
                                         if seek : seeker.train_replay("neg_reward")
                                     
-                                    if (hider.n_games % 30 == 0 or seeker.n_games % 30 == 0) and (hider.n_games != 0 and seeker.n_games != 0):
+                                    if (hider.n_games % clean_memory_interval == 0 or seeker.n_games % clean_memory_interval == 0) and (hider.n_games != 0 and seeker.n_games != 0):
                                         if hide : hider.clean_memory(duplicates=5)
                                         if seek : seeker.clean_memory(duplicates=5)
 
 
+                                    # Reset game
                                     game.reset()
                                     frames = 0
                                     gameover = False
                                     stop = False
                                     
-
+                                    # Break if generation limit is reached
                                     if (hider.n_games == MAX_GENERATION or seeker.n_games == MAX_GENERATION): break
 
             
