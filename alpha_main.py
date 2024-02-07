@@ -59,12 +59,12 @@ def main():
 
     # Init Alpha Agents
     hider = Agent_alpha(alpha=3, name='hider', Qtrainer=Target_QTrainer, lr=0.001, batch_size=1000, max_memory=5000)
-    seeker = Agent_alpha(alpha=3, name='seeker', Qtrainer=Target_QTrainer, lr=0.001, batch_size=1000, max_memory=5000) if not perfect_seeker else Perfect_seeker_0('seeker')
+    seeker = Agent_alpha(alpha=3, name='seeker', Qtrainer=Target_QTrainer, lr=0.001, batch_size=1000, max_memory=5000) if not perfect_seeker else Perfect_seeker('seeker')
     
     '''
     # Init Hivemind Agents
     hider = Agent_hivemind(name='hider', Qtrainer=Target_QTrainer, lr=0.001, batch_size=1000, max_memory=5000)
-    seeker = Agent_hivemind(name='seeker', Qtrainer=Target_QTrainer, lr=0.001, batch_size=1000, max_memory=5000) if not perfect_seeker else Perfect_seeker_0('seeker')
+    seeker = Agent_hivemind(name='seeker', Qtrainer=Target_QTrainer, lr=0.001, batch_size=1000, max_memory=5000) if not perfect_seeker else Perfect_seeker('seeker')
     '''
 
     if hide:
