@@ -5,7 +5,7 @@
 
 ### Install the requirements using the following command:
   
-```pip install -r "requirements.txt"```
+```pip install -r requirements.txt```
 
 ### Executions modes:
   Launch the training of the Alpha agents:
