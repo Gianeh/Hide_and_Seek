@@ -59,7 +59,7 @@ def main():
 
     # Init Beta Agents
     hider = Agent_beta(beta=3, name='hider', lr=0.0005, batch_size=5000,max_memory=1000000, eps_dec=2e-4, eps_min=0.15)
-    seeker = Agent_beta(beta=3, name='seeker', lr=0.0005, batch_size=5000,max_memory=1000000, eps_dec=2e-4, eps_min=0.15) if not perfect_seeker else Perfect_seeker_0('seeker')
+    seeker = Agent_beta(beta=3, name='seeker', lr=0.0005, batch_size=5000,max_memory=1000000, eps_dec=2e-4, eps_min=0.15) if not perfect_seeker else Perfect_seeker('seeker')
     
     if hide:
         # Hider settings
