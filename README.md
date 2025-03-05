@@ -1,5 +1,6 @@
 # HIDE AND SEEK GAME
 
+![Game scenario](https://github.com/Gianeh/Hide_and_Seek/blob/neural/hide_seek_demo.png "Demo scenario - all functionalities rendered")
 
 ## INSTALLATION & USAGE:
 
